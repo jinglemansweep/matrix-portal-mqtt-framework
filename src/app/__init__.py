@@ -77,7 +77,6 @@ if NTP_ENABLE:
     timetuple = parse_timestamp(timestamp)
     RTC().datetime = timetuple
 
-
 # MQTT
 logger("configuring mqtt client")
 MQTT.set_socket(socket, network._wifi.esp)
