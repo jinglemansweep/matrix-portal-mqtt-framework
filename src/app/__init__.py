@@ -67,10 +67,9 @@ logger("configuring networking")
 network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
 network.connect()
 mac = network._wifi.esp.MAC_address
-store["host_id"] = host_id = "{:02x}{:02x}{:02x}{:02x}".format(
-    mac[0], mac[1], mac[2], mac[3]
-)
+host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
 gc.collect()
+
 # NETWORK TIME
 if NTP_ENABLE:
     logger("setting date/time from network")
@@ -143,24 +142,6 @@ async def tick():
     global store, message_count
     frame = store["frame"]
     logger(f"tick: frame={frame}")
-    if store["message"] is not None:
-        message_count += 1
-        for p in range(7):
-            for l in group:
-                l.y -= 1
-            await asyncio.sleep(0.001)
-        label = Label(
-            x=1,
-            y=60,
-            font=font_bitocra,
-            color=0x111111,
-            text=store["message"],
-        )
-        group.append(label)
-        store["message"] = None
-
-        if len(group) > 8:
-            group.pop(0)
     store["frame"] += 1
     gc.collect()
 
