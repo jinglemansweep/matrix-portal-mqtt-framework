@@ -62,14 +62,16 @@ class BaseSprite:
     def _set_target_velocities(self):
         self.x_velocity = 0
         self.y_velocity = 0
-        if self.x < self.x_target:
-            self.x_velocity = 1
-        if self.x > self.x_target:
-            self.x_velocity = -1
-        if self.y < self.y_target:
-            self.y_velocity = 1
-        if self.y > self.y_target:
-            self.y_velocity = -1
+        if self.x_target is not None:
+            if self.x < self.x_target:
+                self.x_velocity = 1
+            if self.x > self.x_target:
+                self.x_velocity = -1
+        if self.y_target is not None:
+            if self.y < self.y_target:
+                self.y_velocity = 1
+            if self.y > self.y_target:
+                self.y_velocity = -1
 
     def _apply_velocities(self):
         self.x += self.x_velocity

@@ -2,7 +2,7 @@ import asyncio
 import board
 from busio import I2C
 import gc
-
+import random
 
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_bitmap_font import bitmap_font
@@ -162,9 +162,12 @@ async def main():
 
 
 async def tick():
-    global store, message_count
+    global store, sprite
     frame = store["frame"]
     logger(f"tick: frame={frame}")
+    if frame % 80 == 0:
+        sprite.set_target(random.randint(-16, 80), random.randint(-16, 80))
+    sprite.tick()
     store["frame"] += 1
     gc.collect()
 
