@@ -27,6 +27,9 @@ class BaseSprite:
         self.y_target = None
         self.x_velocity = 0
         self.y_velocity = 0
+        self.x_dir_last = None
+        self.y_dir_last = None
+        self.is_moving = False
         self.tilegrid = TileGrid(
             bitmap=bitmap,
             pixel_shader=pixel_shader,
@@ -48,30 +51,41 @@ class BaseSprite:
         if y is not None:
             self.y = y
 
+    def set_velocity(self, x=0, y=0):
+        if x is not None:
+            self.x_velocity = x
+        if y is not None:
+            self.y_velocity = y
+
     def set_target(self, x=None, y=None):
         if x is not None:
             self.x_target = x
         if y is not None:
             self.y_target = y
 
-    def tick(self):
+    def stop(self):
+        self.set_velocity(0, 0)
+        self.x_target = None
+        self.y_target = None
+
+    async def tick(self):
         self._set_target_velocities()
         self._apply_velocities()
         self._update_tilegrid()
 
     def _set_target_velocities(self):
-        self.x_velocity = 0
-        self.y_velocity = 0
         if self.x_target is not None:
-            if self.x < self.x_target:
-                self.x_velocity = 1
-            if self.x > self.x_target:
-                self.x_velocity = -1
+            if self.x_target != self.x:
+                self.x_velocity = self.x_dir_last = 1 if self.x_target > self.x else -1
+            else:
+                self.v_velocity = 0
+                self.x_target = None
         if self.y_target is not None:
-            if self.y < self.y_target:
-                self.y_velocity = 1
-            if self.y > self.y_target:
-                self.y_velocity = -1
+            if self.y_target != self.y:
+                self.y_velolicty = self.y_dir_last = 1 if self.y_target > self.y else -1
+            else:
+                self.y_velocity = 0
+                self.y_target = None
 
     def _apply_velocities(self):
         self.x += self.x_velocity

@@ -3,6 +3,7 @@ import board
 from busio import I2C
 import gc
 import random
+import time
 
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_bitmap_font import bitmap_font
@@ -132,9 +133,23 @@ if NETWORK_ENABLE:
             gc.collect()
 
 # DISPLAYIO
+sprites = []
 group = Group()
-sprite = BaseSprite(spritesheet, pixel_shader, 1, 1, 16, 16, 0, 0, 0)
-group.append(sprite.get_tilegrid())
+for i in range(8):
+    sprite = BaseSprite(
+        spritesheet,
+        pixel_shader,
+        1,
+        1,
+        16,
+        16,
+        0,
+        random.randint(0, MATRIX_WIDTH - 16),
+        random.randint(0, MATRIX_WIDTH - 16),
+    )
+    sprite.set_velocity(random.randint(-1, 1), random.randint(-1, 1))
+    sprites.append(sprite)
+    group.append(sprite.get_tilegrid())
 display.show(group)
 
 # EVENT LOOP
@@ -155,9 +170,8 @@ async def main():
     if MQTT_ENABLE:
         asyncio.create_task(mqtt_poll(client))
     gc.collect()
-
     while True:
-        await tick()
+        asyncio.create_task(tick())
         await asyncio.sleep(0.0001)
 
 
@@ -165,9 +179,20 @@ async def tick():
     global store, sprite
     frame = store["frame"]
     logger(f"tick: frame={frame}")
-    if frame % 80 == 0:
-        sprite.set_target(random.randint(-16, 80), random.randint(-16, 80))
-    sprite.tick()
+
+    for sprite in sprites:
+        if frame % 80 == 0:
+            sprite.set_velocity(random.randint(-1, 2), random.randint(-1, 2))
+        if sprite.x < 0:
+            sprite.set_velocity(x=1)
+        elif sprite.x > MATRIX_WIDTH - 16:
+            sprite.set_velocity(x=-1)
+        if sprite.y < 0:
+            sprite.set_velocity(y=1)
+        elif sprite.y > MATRIX_HEIGHT - 16:
+            sprite.set_velocity(y=-1)
+        asyncio.create_task(sprite.tick())
+    # await asyncio.sleep(0.0001)
     store["frame"] += 1
     gc.collect()
 

@@ -12,3 +12,8 @@ MATRIX_HEIGHT = secrets.get("matrix_height", 32)
 MATRIX_BIT_DEPTH = secrets.get("matrix_bit_depth", 5)
 MATRIX_COLOR_ORDER = secrets.get("matrix_color_order", "RGB")
 MQTT_PREFIX = secrets.get("mqtt_prefix", "mqticker")
+
+if not NETWORK_ENABLE:
+    NTP_ENABLE = False
+    MQTT_ENABLE = False
+    HASS_ENABLE = False
