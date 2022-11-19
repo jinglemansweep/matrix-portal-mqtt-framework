@@ -2,9 +2,8 @@ import asyncio
 import board
 from busio import I2C
 import gc
-import adafruit_esp32spi.adafruit_esp32spi_socket as socket
-import adafruit_minimqtt.adafruit_minimqtt as MQTT
-from adafruit_matrixportal.network import Network
+
+
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
@@ -30,8 +29,12 @@ from app.config import (
 from app.storage import store
 from app.display import BaseSprite, load_bitmap
 from app.gpio import poll_buttons
-from app.hass import advertise_entity, OPTS_LIGHT_RGB
-from app.mqtt import mqtt_poll, on_mqtt_connect, on_mqtt_disconnect, on_mqtt_message
+from app.mqtt import (
+    mqtt_poll,
+    on_mqtt_connect,
+    on_mqtt_disconnect,
+    on_mqtt_message,
+)
 from app.utils import logger, matrix_rotation, parse_timestamp
 
 logger(
@@ -74,6 +77,7 @@ gc.collect()
 
 # NETWORKING
 if NETWORK_ENABLE:
+    from adafruit_matrixportal.network import Network
 
     logger("configuring networking")
     network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
@@ -88,9 +92,13 @@ if NETWORK_ENABLE:
         timestamp = network.get_local_time()
         timetuple = parse_timestamp(timestamp)
         RTC().datetime = timetuple
+        gc.collect()
 
     # MQTT
     if MQTT_ENABLE:
+        import adafruit_esp32spi.adafruit_esp32spi_socket as socket
+        import adafruit_minimqtt.adafruit_minimqtt as MQTT
+
         logger("configuring mqtt client")
         MQTT.set_socket(socket, network._wifi.esp)
         client = MQTT.MQTT(
@@ -107,6 +115,8 @@ if NETWORK_ENABLE:
 
         # HOME ASSISTANT
         if HASS_ENABLE:
+            from app.hass import advertise_entity, OPTS_LIGHT_RGB
+
             light_rgb_options = dict(
                 color_mode=True, supported_color_modes=["rgb"], brightness=False
             )
@@ -119,6 +129,7 @@ if NETWORK_ENABLE:
                 OPTS_LIGHT_RGB,
                 dict(state="ON", color=0x00FF00, brightness=255, color_mode="rgb"),
             )
+            gc.collect()
 
 # DISPLAYIO
 group = Group()
