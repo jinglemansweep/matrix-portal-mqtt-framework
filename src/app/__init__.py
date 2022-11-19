@@ -9,13 +9,16 @@ from adafruit_matrixportal.matrix import Matrix
 from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
 from displayio import Group
-from adafruit_display_text.label import Label
+
 from rtc import RTC
 from secrets import secrets
 
 from app.config import (
     DEBUG,
+    NETWORK_ENABLE,
     NTP_ENABLE,
+    MQTT_ENABLE,
+    HASS_ENABLE,
     NTP_INTERVAL,
     MATRIX_WIDTH,
     MATRIX_HEIGHT,
@@ -23,11 +26,13 @@ from app.config import (
     MATRIX_COLOR_ORDER,
     MQTT_PREFIX,
 )
+
 from app.storage import store
+from app.display import BaseSprite, load_bitmap
 from app.gpio import poll_buttons
 from app.hass import advertise_entity, OPTS_LIGHT_RGB
 from app.mqtt import mqtt_poll, on_mqtt_connect, on_mqtt_disconnect, on_mqtt_message
-from app.utils import logger, debug, matrix_rotation, parse_timestamp, rgb2hex
+from app.utils import logger, matrix_rotation, parse_timestamp
 
 logger(
     f"debug={DEBUG} ntp_enable={NTP_ENABLE} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}"
@@ -40,9 +45,13 @@ logger(
 BUTTON_UP = 0
 BUTTON_DOWN = 1
 
+# LOCAL VARS
+client = None
+
 # STATIC RESOURCES
 logger("loading static resources")
 font_bitocra = bitmap_font.load_font("/bitocra7.bdf")
+spritesheet, pixel_shader = load_bitmap("/sprites.bmp", transparent_index=31)
 
 # RGB MATRIX
 logger("configuring rgb matrix")
@@ -62,57 +71,60 @@ display.rotation = matrix_rotation(accelerometer)
 display.show(Group())
 gc.collect()
 
+
 # NETWORKING
-logger("configuring networking")
-network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
-network.connect()
-mac = network._wifi.esp.MAC_address
-host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
-gc.collect()
+if NETWORK_ENABLE:
 
-# NETWORK TIME
-if NTP_ENABLE:
-    logger("setting date/time from network")
-    timestamp = network.get_local_time()
-    timetuple = parse_timestamp(timestamp)
-    RTC().datetime = timetuple
+    logger("configuring networking")
+    network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
+    network.connect()
+    mac = network._wifi.esp.MAC_address
+    host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
+    gc.collect()
 
-# MQTT
-logger("configuring mqtt client")
-MQTT.set_socket(socket, network._wifi.esp)
-client = MQTT.MQTT(
-    broker=secrets.get("mqtt_broker"),
-    username=secrets.get("mqtt_user"),
-    password=secrets.get("mqtt_password"),
-    port=secrets.get("mqtt_port", 1883),
-)
-client.on_connect = on_mqtt_connect
-client.on_disconnect = on_mqtt_disconnect
-client.on_message = on_mqtt_message
-client.connect()
-gc.collect()
+    # NETWORK TIME
+    if NTP_ENABLE:
+        logger("setting date/time from network")
+        timestamp = network.get_local_time()
+        timetuple = parse_timestamp(timestamp)
+        RTC().datetime = timetuple
 
-# HOME ASSISTANT
-light_rgb_options = dict(
-    color_mode=True, supported_color_modes=["rgb"], brightness=False
-)
-advertise_entity(client, host_id, "power", "switch")
-advertise_entity(
-    client,
-    host_id,
-    "date_rgb",
-    "light",
-    OPTS_LIGHT_RGB,
-    dict(state="ON", color=0x00FF00, brightness=255, color_mode="rgb"),
-)
+    # MQTT
+    if MQTT_ENABLE:
+        logger("configuring mqtt client")
+        MQTT.set_socket(socket, network._wifi.esp)
+        client = MQTT.MQTT(
+            broker=secrets.get("mqtt_broker"),
+            username=secrets.get("mqtt_user"),
+            password=secrets.get("mqtt_password"),
+            port=secrets.get("mqtt_port", 1883),
+        )
+        client.on_connect = on_mqtt_connect
+        client.on_disconnect = on_mqtt_disconnect
+        client.on_message = on_mqtt_message
+        client.connect()
+        gc.collect()
+
+        # HOME ASSISTANT
+        if HASS_ENABLE:
+            light_rgb_options = dict(
+                color_mode=True, supported_color_modes=["rgb"], brightness=False
+            )
+            advertise_entity(client, host_id, "power", "switch")
+            advertise_entity(
+                client,
+                host_id,
+                "date_rgb",
+                "light",
+                OPTS_LIGHT_RGB,
+                dict(state="ON", color=0x00FF00, brightness=255, color_mode="rgb"),
+            )
 
 # DISPLAYIO
 group = Group()
+sprite = BaseSprite(spritesheet, pixel_shader, 1, 1, 16, 16, 0, 0, 0)
+group.append(sprite.get_tilegrid())
 display.show(group)
-
-# LOCAL STATE
-message_count = 0
-prev_message = []
 
 # EVENT LOOP
 def run():
@@ -129,7 +141,8 @@ def run():
 async def main():
     logger("event loop started")
     asyncio.create_task(poll_buttons())
-    asyncio.create_task(mqtt_poll(client))
+    if MQTT_ENABLE:
+        asyncio.create_task(mqtt_poll(client))
     gc.collect()
 
     while True:
