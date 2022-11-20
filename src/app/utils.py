@@ -2,7 +2,7 @@ import gc
 import math
 import time
 
-from app.config import DEBUG
+from app.constants import DEBUG
 
 
 def logger(msg, *args):
