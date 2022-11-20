@@ -1,10 +1,38 @@
+import asyncio
+import board
 import json
+from keypad import Keys
+
 from app.config import MQTT_PREFIX
 from app.storage import store
 from app.utils import logger
 
-HASS_TOPIC_PREFIX = "homeassistant"
 
+# MQTT
+
+
+def on_mqtt_message(client, topic, message):
+    print(f"MQTT > Message: Topic={topic} | Message={message}")
+    process_message(client, topic, message)
+
+
+def on_mqtt_connect(client, userdata, flags, rc):
+    print("MQTT > Connected: Flags={} | RC={}".format(flags, rc))
+
+
+def on_mqtt_disconnect(client, userdata, rc):
+    print("MQTT > Disconnected")
+
+
+async def mqtt_poll(client, timeout=0.000001):
+    while True:
+        client.loop(timeout=timeout)
+        await asyncio.sleep(timeout)
+
+
+# HOME ASSISTANT
+
+HASS_TOPIC_PREFIX = "homeassistant"
 OPTS_LIGHT_RGB = dict(color_mode=True, supported_color_modes=["rgb"], brightness=False)
 
 
@@ -68,3 +96,19 @@ def process_message(client, topic, message):
 
 def build_entity_topic_prefix(name, device_class):
     return f"{HASS_TOPIC_PREFIX}/{device_class}/{name}"
+
+
+# GPIO BUTTONS
+
+
+async def poll_buttons():
+    with Keys(
+        (board.BUTTON_UP, board.BUTTON_DOWN), value_when_pressed=False, pull=True
+    ) as keys:
+        while True:
+            key_event = keys.events.get()
+            if key_event and key_event.pressed:
+                key_number = key_event.key_number
+                logger(f"button: key={key_number}")
+                store["button"] = key_number
+            await asyncio.sleep(0.001)

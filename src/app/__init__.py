@@ -29,8 +29,8 @@ from app.config import (
 
 from app.storage import store
 from app.display import BaseSprite, load_bitmap
-from app.gpio import poll_buttons
-from app.mqtt import (
+from app.integration import poll_buttons
+from app.integration import (
     mqtt_poll,
     on_mqtt_connect,
     on_mqtt_disconnect,
