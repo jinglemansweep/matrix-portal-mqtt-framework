@@ -97,7 +97,7 @@ def update_entity_state(client, device_class, name, new_state=None):
         else json.dumps(new_state)
     )
     topic_prefix = build_entity_topic_prefix(name, device_class)
-    client.publish(f"{topic_prefix}/state", payload, retain=True, qos=1)
+    client.publish(f"{topic_prefix}/state", payload, retain=False, qos=0)
 
 
 def process_message(client, topic, message):

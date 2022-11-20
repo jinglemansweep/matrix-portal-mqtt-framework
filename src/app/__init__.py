@@ -113,7 +113,7 @@ if NETWORK_ENABLE:
 
         # HOME ASSISTANT
         if HASS_ENABLE:
-            from app.hass import advertise_entity, OPTS_LIGHT_RGB
+            from app.integration import advertise_entity, OPTS_LIGHT_RGB
 
             light_rgb_options = dict(
                 color_mode=True, supported_color_modes=["rgb"], brightness=False
