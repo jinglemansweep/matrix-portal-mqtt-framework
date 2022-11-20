@@ -113,16 +113,25 @@ if NETWORK_ENABLE:
 
         # HOME ASSISTANT
         if HASS_ENABLE:
-            from app.integration import advertise_entity, OPTS_LIGHT_RGB
+            from app.integration import (
+                advertise_entity,
+                build_entity_name,
+                OPTS_LIGHT_RGB,
+            )
 
             light_rgb_options = dict(
                 color_mode=True, supported_color_modes=["rgb"], brightness=False
             )
-            advertise_entity(client, host_id, "power", "switch")
             advertise_entity(
                 client,
-                host_id,
-                "date_rgb",
+                build_entity_name(host_id, "power"),
+                "switch",
+                dict(),
+                dict(state="ON"),
+            )
+            advertise_entity(
+                client,
+                build_entity_name(host_id, "date_rgb"),
                 "light",
                 OPTS_LIGHT_RGB,
                 dict(state="ON", color=0x00FF00, brightness=255, color_mode="rgb"),

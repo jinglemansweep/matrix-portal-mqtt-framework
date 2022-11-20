@@ -57,16 +57,19 @@ HASS_TOPIC_PREFIX = "homeassistant"
 OPTS_LIGHT_RGB = dict(color_mode=True, supported_color_modes=["rgb"], brightness=False)
 
 
+def build_entity_name(host_id, name):
+    return f"{MQTT_PREFIX}_{host_id}_{name}"
+
+
 def advertise_entity(
-    client, host_id, name, device_class="switch", options=None, initial_state=None
+    client, name, device_class="switch", options=None, initial_state=None
 ):
     if options is None:
         options = {}
     topic_prefix = build_entity_topic_prefix(name, device_class)
-    name_full = f"{MQTT_PREFIX}_{host_id}_{name}"
     auto_config = dict(
-        name=name_full,
-        unique_id=name_full,
+        name=name,
+        unique_id=name,
         device_class=device_class,
         schema="json",
         command_topic=f"{topic_prefix}/set",
@@ -74,13 +77,16 @@ def advertise_entity(
     )
     config = auto_config.copy()
     config.update(options)
-    logger(
-        f"advertising hass entity: name={name} name_full={name_full} config={config}"
-    )
+    logger(f"advertising hass entity: name={name} config={config}")
     client.publish(f"{topic_prefix}/config", json.dumps(config), retain=True, qos=1)
     client.subscribe(f"{topic_prefix}/set", 1)
     if initial_state is not None:
-        update_entity_state(client, device_class, name, initial_state)
+        update_entity_state(
+            client,
+            device_class,
+            name,
+            initial_state,
+        )
 
 
 def update_entity_state(client, device_class, name, new_state=None):
@@ -97,10 +103,14 @@ def update_entity_state(client, device_class, name, new_state=None):
         else json.dumps(new_state)
     )
     topic_prefix = build_entity_topic_prefix(name, device_class)
-    client.publish(f"{topic_prefix}/state", payload, retain=False, qos=0)
+    try:
+        client.publish(f"{topic_prefix}/state", payload, retain=True, qos=1)
+    except RuntimeError as error:
+        logger(error)
 
 
 def process_message(client, topic, message):
+    print(topic, message)
     if not topic.startswith(HASS_TOPIC_PREFIX):
         return
     bits = topic.split("/")
