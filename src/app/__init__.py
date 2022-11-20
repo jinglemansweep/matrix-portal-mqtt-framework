@@ -3,14 +3,11 @@ import board
 from busio import I2C
 import gc
 import random
-import time
-
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
 from displayio import Group
 
-from rtc import RTC
 from secrets import secrets
 
 from app.config import (
@@ -28,15 +25,17 @@ from app.config import (
 )
 
 from app.storage import store
-from app.display import BaseSprite, load_bitmap
+from app.display import BaseSprite, ClockLabel, load_bitmap
 from app.integration import poll_buttons
 from app.integration import (
     mqtt_poll,
     on_mqtt_connect,
     on_mqtt_disconnect,
     on_mqtt_message,
+    ntp_update,
+    ntp_poll,
 )
-from app.utils import logger, matrix_rotation, parse_timestamp
+from app.utils import logger, matrix_rotation
 
 logger(
     f"debug={DEBUG} ntp_enable={NTP_ENABLE} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}"
@@ -89,10 +88,7 @@ if NETWORK_ENABLE:
 
     # NETWORK TIME
     if NTP_ENABLE:
-        logger("setting date/time from network")
-        timestamp = network.get_local_time()
-        timetuple = parse_timestamp(timestamp)
-        RTC().datetime = timetuple
+        ntp_update(network)
         gc.collect()
 
     # MQTT
@@ -150,6 +146,8 @@ for i in range(8):
     sprite.set_velocity(random.randint(-1, 1), random.randint(-1, 1))
     sprites.append(sprite)
     group.append(sprite.get_tilegrid())
+    clock = ClockLabel(x=1, y=3, font=font_bitocra)
+    group.append(clock)
 display.show(group)
 
 # EVENT LOOP
@@ -169,6 +167,8 @@ async def main():
     asyncio.create_task(poll_buttons())
     if MQTT_ENABLE:
         asyncio.create_task(mqtt_poll(client))
+    if NTP_ENABLE:
+        asyncio.create_task(ntp_poll(network))
     gc.collect()
     while True:
         asyncio.create_task(tick())
@@ -179,7 +179,7 @@ async def tick():
     global store, sprite
     frame = store["frame"]
     logger(f"tick: frame={frame}")
-
+    clock.tick()
     for sprite in sprites:
         if frame % 80 == 0:
             sprite.set_velocity(random.randint(-1, 2), random.randint(-1, 2))

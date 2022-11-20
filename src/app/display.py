@@ -1,7 +1,9 @@
 import gc
+import time
 from adafruit_display_text.label import Label
 from displayio import OnDiskBitmap, TileGrid
 from cedargrove_palettefader.palettefader import PaletteFader
+from rtc import RTC
 
 PALETTE_GAMMA = 1.0
 PALETTE_BRIGHTNESS = 0.1
@@ -94,6 +96,26 @@ class BaseSprite:
     def _update_tilegrid(self):
         self.tilegrid.x = int(self.x)
         self.tilegrid.y = int(self.y)
+
+
+class ClockLabel(Label):
+    def __init__(self, x, y, font, color=0x111111):
+        super().__init__(text="", font=font, color=color)
+        self.x = x
+        self.y = y
+        self.new_second = None
+
+    def tick(self):
+        # frame = state["frame"]
+        # self.hidden = entities.get("time_rgb").get_state().get("state") == "OFF"
+        now = RTC().datetime
+        ts = time.monotonic()
+        if self.new_second is None or ts > self.new_second + 1:
+            self.new_second = ts
+            hhmmss = "{:0>2d}:{:0>2d}:{:0>2d}".format(
+                now.tm_hour, now.tm_min, now.tm_sec
+            )
+            self.text = hhmmss
 
 
 class MyLabel(Label):

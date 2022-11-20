@@ -2,10 +2,26 @@ import asyncio
 import board
 import json
 from keypad import Keys
+from rtc import RTC
 
-from app.config import MQTT_PREFIX
+from app.config import MQTT_PREFIX, NTP_INTERVAL
 from app.storage import store
-from app.utils import logger
+from app.utils import logger, parse_timestamp
+
+# NETWORK
+
+
+def ntp_update(network):
+    logger("setting date/time from network")
+    timestamp = network.get_local_time()
+    timetuple = parse_timestamp(timestamp)
+    RTC().datetime = timetuple
+
+
+async def ntp_poll(network):
+    while True:
+        ntp_update(network)
+        await asyncio.sleep(NTP_INTERVAL)
 
 
 # MQTT
