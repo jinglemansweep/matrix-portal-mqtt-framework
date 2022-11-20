@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import time
 from adafruit_display_text.label import Label
@@ -22,9 +23,11 @@ class BaseSprite:
         default_tile=0,
         x=0,
         y=0,
+        async_delay=None,
     ):
         self.x = float(x)
         self.y = float(y)
+        self.async_delay = async_delay
         self.x_target = None
         self.y_target = None
         self.x_velocity = 0
@@ -70,7 +73,13 @@ class BaseSprite:
         self.x_target = None
         self.y_target = None
 
-    async def tick(self):
+    async def start(self):
+        if isinstance(self.async_delay, float):
+            while True:
+                self.tick()
+                await asyncio.sleep(self.async_delay)
+
+    def tick(self):
         self._set_target_velocities()
         self._apply_velocities()
         self._update_tilegrid()
@@ -99,11 +108,18 @@ class BaseSprite:
 
 
 class ClockLabel(Label):
-    def __init__(self, x, y, font, color=0x111111):
+    def __init__(self, x, y, font, color=0x111111, async_delay=None):
         super().__init__(text="", font=font, color=color)
         self.x = x
         self.y = y
         self.new_second = None
+        self.async_delay = async_delay
+
+    async def start(self):
+        if isinstance(self.async_delay, float):
+            while True:
+                self.tick()
+                await asyncio.sleep(self.async_delay)
 
     def tick(self):
         # frame = state["frame"]

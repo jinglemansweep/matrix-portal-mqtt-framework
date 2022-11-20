@@ -4,7 +4,12 @@ import json
 from keypad import Keys
 from rtc import RTC
 
-from app.config import MQTT_PREFIX, NTP_INTERVAL
+from app.constants import (
+    MQTT_PREFIX,
+    NTP_INTERVAL,
+    ASYNCIO_POLL_MQTT_DELAY,
+    ASYNCIO_POLL_GPIO_DELAY,
+)
 from app.storage import store
 from app.utils import logger, parse_timestamp
 
@@ -40,7 +45,7 @@ def on_mqtt_disconnect(client, userdata, rc):
     print("MQTT > Disconnected")
 
 
-async def mqtt_poll(client, timeout=0.000001):
+async def mqtt_poll(client, timeout=ASYNCIO_POLL_MQTT_DELAY):
     while True:
         client.loop(timeout=timeout)
         await asyncio.sleep(timeout)
@@ -117,7 +122,7 @@ def build_entity_topic_prefix(name, device_class):
 # GPIO BUTTONS
 
 
-async def poll_buttons():
+async def poll_buttons(timeout=ASYNCIO_POLL_GPIO_DELAY):
     with Keys(
         (board.BUTTON_UP, board.BUTTON_DOWN), value_when_pressed=False, pull=True
     ) as keys:
@@ -127,4 +132,4 @@ async def poll_buttons():
                 key_number = key_event.key_number
                 logger(f"button: key={key_number}")
                 store["button"] = key_number
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(timeout)

@@ -10,7 +10,7 @@ from displayio import Group
 
 from secrets import secrets
 
-from app.config import (
+from app.constants import (
     DEBUG,
     NETWORK_ENABLE,
     NTP_ENABLE,
@@ -22,6 +22,7 @@ from app.config import (
     MATRIX_BIT_DEPTH,
     MATRIX_COLOR_ORDER,
     MQTT_PREFIX,
+    ASYNCIO_LOOP_DELAY,
 )
 
 from app.storage import store
@@ -131,6 +132,7 @@ if NETWORK_ENABLE:
 # DISPLAYIO
 sprites = []
 group = Group()
+# Add random sprites
 for i in range(8):
     sprite = BaseSprite(
         spritesheet,
@@ -142,12 +144,15 @@ for i in range(8):
         0,
         random.randint(0, MATRIX_WIDTH - 16),
         random.randint(0, MATRIX_WIDTH - 16),
+        async_delay=0.001,
     )
     sprite.set_velocity(random.randint(-1, 1), random.randint(-1, 1))
     sprites.append(sprite)
     group.append(sprite.get_tilegrid())
-    clock = ClockLabel(x=1, y=3, font=font_bitocra)
-    group.append(clock)
+# Add clock
+clock = ClockLabel(x=1, y=3, font=font_bitocra, async_delay=0.5)
+group.append(clock)
+# Show group
 display.show(group)
 
 # EVENT LOOP
@@ -169,17 +174,20 @@ async def main():
         asyncio.create_task(mqtt_poll(client))
     if NTP_ENABLE:
         asyncio.create_task(ntp_poll(network))
+    asyncio.create_task(clock.start())
+    for sprite in sprites:
+        asyncio.create_task(sprite.start())
     gc.collect()
     while True:
         asyncio.create_task(tick())
-        await asyncio.sleep(0.0001)
+        await asyncio.sleep(ASYNCIO_LOOP_DELAY)
+        gc.collect()
 
 
 async def tick():
     global store, sprite
     frame = store["frame"]
     logger(f"tick: frame={frame}")
-    clock.tick()
     for sprite in sprites:
         if frame % 80 == 0:
             sprite.set_velocity(random.randint(-1, 2), random.randint(-1, 2))
@@ -191,10 +199,7 @@ async def tick():
             sprite.set_velocity(y=1)
         elif sprite.y > MATRIX_HEIGHT - 16:
             sprite.set_velocity(y=-1)
-        asyncio.create_task(sprite.tick())
-    # await asyncio.sleep(0.0001)
     store["frame"] += 1
-    gc.collect()
 
 
 # STARTUP
