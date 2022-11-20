@@ -133,7 +133,7 @@ if NETWORK_ENABLE:
 sprites = []
 group = Group()
 # Add random sprites
-for i in range(8):
+for i in range(4):
     sprite = BaseSprite(
         spritesheet,
         pixel_shader,
