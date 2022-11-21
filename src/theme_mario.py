@@ -9,7 +9,11 @@ from app.utils import logger
 spritesheet, pixel_shader = load_bitmap("/mario.bmp", transparent_index=31)
 
 
-def theme_tick(frame, width, height, actors):
+class Sprite(BaseSprite):
+    pass
+
+
+def tick(frame, width, height, actors):
     # logger(f"theme: frame={frame}")
     for actor in actors:
         if frame % 80 == 0:
@@ -24,14 +28,14 @@ def theme_tick(frame, width, height, actors):
             actor.set_velocity(y=-1)
 
 
-def setup_theme(width, height, font):
+def setup(width, height, font):
     logger(f"theme setup: width={width} height={height} font={font}")
     # SETUP ROOT DISPLAYIO GROUP
     group = Group()
     actors = []
     # Add random sprites
-    for i in range(8):
-        sprite = BaseSprite(
+    for i in range(4):
+        sprite = Sprite(
             spritesheet,
             pixel_shader,
             1,
@@ -41,7 +45,7 @@ def setup_theme(width, height, font):
             random.choice([0, 15, 12]),
             random.randint(0, width - 16),
             random.randint(0, height - 16),
-            async_delay=0.001,
+            async_delay=0.0001,
         )
         sprite.set_velocity(random.randint(-1, 1), random.randint(-1, 1))
         asyncio.create_task(sprite.start())
@@ -53,6 +57,6 @@ def setup_theme(width, height, font):
     group.append(clock)
     # DEFINE TICK CALLBACK
     def tick_fn(frame):
-        theme_tick(frame, width, height, actors)
+        tick(frame, width, height, actors)
 
     return (group, tick_fn)

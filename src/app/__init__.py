@@ -2,7 +2,6 @@ import asyncio
 import board
 from busio import I2C
 import gc
-import random
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
@@ -37,7 +36,7 @@ from app.integration import (
     ntp_poll,
 )
 from app.utils import logger, matrix_rotation
-from theme import setup_theme
+from theme import setup as setup_theme
 
 logger(
     f"debug={DEBUG} ntp_enable={NTP_ENABLE} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}"
