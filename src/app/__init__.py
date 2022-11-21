@@ -74,7 +74,7 @@ display = matrix.display
 display.rotation = matrix_rotation(accelerometer)
 display.show(Group())
 gc.collect()
-
+del accelerometer
 
 # NETWORKING
 if NETWORK_ENABLE:
@@ -137,6 +137,7 @@ if NETWORK_ENABLE:
                 dict(state="ON", color=0x00FF00, brightness=255, color_mode="rgb"),
             )
             gc.collect()
+            del light_rgb_options
 
 # DISPLAYIO
 sprites = []

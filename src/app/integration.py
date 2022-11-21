@@ -55,6 +55,7 @@ async def mqtt_poll(client, timeout=ASYNCIO_POLL_MQTT_DELAY):
             topic, message = mqtt_messages.pop(0)
             logger(f"mqtt queue: enqueued={len(mqtt_messages)} processing={topic}")
             process_message(client, topic, message)
+            del topic, message
         await asyncio.sleep(timeout)
 
 
@@ -94,6 +95,7 @@ def advertise_entity(
             name,
             initial_state,
         )
+    del topic_prefix, auto_config, config
 
 
 def update_entity_state(client, device_class, name, new_state=None):
@@ -114,10 +116,10 @@ def update_entity_state(client, device_class, name, new_state=None):
         client.publish(f"{topic_prefix}/state", payload, retain=True, qos=1)
     except RuntimeError as error:
         logger(error)
+    del payload, topic_prefix
 
 
 def process_message(client, topic, message):
-    print(topic, message)
     if not topic.startswith(HASS_TOPIC_PREFIX):
         return
     bits = topic.split("/")
@@ -130,6 +132,7 @@ def process_message(client, topic, message):
     )
     if topic == f"{HASS_TOPIC_PREFIX}/{device_class}/{name}/set":
         update_entity_state(client, device_class, name, payload)
+    del bits, device_class, name, payload
 
 
 def build_entity_topic_prefix(name, device_class):
