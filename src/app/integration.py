@@ -13,6 +13,8 @@ from app.constants import (
 from app.storage import store
 from app.utils import logger, parse_timestamp
 
+mqtt_messages = []
+
 # NETWORK
 
 
@@ -33,21 +35,26 @@ async def ntp_poll(network):
 
 
 def on_mqtt_message(client, topic, message):
-    print(f"MQTT > Message: Topic={topic} | Message={message}")
-    process_message(client, topic, message)
+    logger(f"mqtt received: topic={topic} message={message}")
+    mqtt_messages.append((topic, message))
+    # process_message(client, topic, message)
 
 
 def on_mqtt_connect(client, userdata, flags, rc):
-    print("MQTT > Connected: Flags={} | RC={}".format(flags, rc))
+    logger("mqtt connected: flags={} rc={}".format(flags, rc))
 
 
 def on_mqtt_disconnect(client, userdata, rc):
-    print("MQTT > Disconnected")
+    logger("mqtt disconnected")
 
 
 async def mqtt_poll(client, timeout=ASYNCIO_POLL_MQTT_DELAY):
     while True:
         client.loop(timeout=timeout)
+        if len(mqtt_messages):
+            topic, message = mqtt_messages.pop(0)
+            logger(f"mqtt queue: enqueued={len(mqtt_messages)} processing={topic}")
+            process_message(client, topic, message)
         await asyncio.sleep(timeout)
 
 

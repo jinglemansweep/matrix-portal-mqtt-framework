@@ -4,5 +4,15 @@
         "reportMissingImports": "none"
     },
     "editor.formatOnSave": true,
-    "editor.formatOnPaste": true
+    "editor.formatOnPaste": true,
+    "vsmqtt.brokerProfiles": [
+        {
+            "name": "HASS",
+            "host": "hass.home.ptre.es",
+            "port": 1883,
+            "clientId": "vsmqtt_client",
+            "username": "mqtt",
+            "password": "password"
+        }
+    ]
 }
