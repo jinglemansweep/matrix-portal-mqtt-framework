@@ -1,5 +1,6 @@
 secrets.py
 secrets.*.py
+src/theme.py
 secrets.sh
 .backup
 __pycache__

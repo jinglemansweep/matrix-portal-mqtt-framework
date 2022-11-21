@@ -26,7 +26,7 @@ from app.constants import (
 )
 
 from app.storage import store
-from app.display import BaseSprite, ClockLabel, load_bitmap
+from app.display import load_bitmap
 from app.integration import poll_buttons
 from app.integration import (
     mqtt_poll,
@@ -37,6 +37,7 @@ from app.integration import (
     ntp_poll,
 )
 from app.utils import logger, matrix_rotation
+from theme import setup_theme
 
 logger(
     f"debug={DEBUG} ntp_enable={NTP_ENABLE} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}"
@@ -45,9 +46,6 @@ logger(
     f"matrix_width={MATRIX_WIDTH} matrix_height={MATRIX_HEIGHT} matrix_bit_depth={MATRIX_BIT_DEPTH} matrix_color_order={MATRIX_COLOR_ORDER}"
 )
 
-# CONSTANTS
-BUTTON_UP = 0
-BUTTON_DOWN = 1
 
 # LOCAL VARS
 client = None
@@ -139,29 +137,11 @@ if NETWORK_ENABLE:
             gc.collect()
             del light_rgb_options
 
-# DISPLAYIO
-sprites = []
-group = Group()
-# Add random sprites
-for i in range(4):
-    sprite = BaseSprite(
-        spritesheet,
-        pixel_shader,
-        1,
-        1,
-        16,
-        16,
-        0,
-        random.randint(0, MATRIX_WIDTH - 16),
-        random.randint(0, MATRIX_WIDTH - 16),
-        async_delay=0.001,
-    )
-    sprite.set_velocity(random.randint(-1, 1), random.randint(-1, 1))
-    sprites.append(sprite)
-    group.append(sprite.get_tilegrid())
-# Add clock
-clock = ClockLabel(x=1, y=3, font=font_bitocra, async_delay=0.5)
-group.append(clock)
+# THEME
+group, tick_fn = setup_theme(
+    width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra
+)
+
 # Show group
 display.show(group)
 
@@ -184,9 +164,6 @@ async def main():
         asyncio.create_task(mqtt_poll(client))
     if NTP_ENABLE:
         asyncio.create_task(ntp_poll(network))
-    asyncio.create_task(clock.start())
-    for sprite in sprites:
-        asyncio.create_task(sprite.start())
     gc.collect()
     while True:
         asyncio.create_task(tick())
@@ -197,18 +174,9 @@ async def main():
 async def tick():
     global store, sprite
     frame = store["frame"]
-    logger(f"tick: frame={frame}")
-    for sprite in sprites:
-        if frame % 80 == 0:
-            sprite.set_velocity(random.randint(-1, 2), random.randint(-1, 2))
-        if sprite.x < 0:
-            sprite.set_velocity(x=1)
-        elif sprite.x > MATRIX_WIDTH - 16:
-            sprite.set_velocity(x=-1)
-        if sprite.y < 0:
-            sprite.set_velocity(y=1)
-        elif sprite.y > MATRIX_HEIGHT - 16:
-            sprite.set_velocity(y=-1)
+    if frame % 100 == 0:
+        logger(f"tick: frame={frame}")
+    tick_fn(frame)
     store["frame"] += 1
 
 
