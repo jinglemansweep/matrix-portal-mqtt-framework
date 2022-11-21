@@ -5,10 +5,10 @@ from keypad import Keys
 from rtc import RTC
 
 from app.constants import (
-    MQTT_PREFIX,
     NTP_INTERVAL,
     ASYNCIO_POLL_MQTT_DELAY,
     ASYNCIO_POLL_GPIO_DELAY,
+    MQTT_PREFIX,
 )
 from app.storage import store
 from app.utils import logger, parse_timestamp
@@ -48,101 +48,153 @@ def on_mqtt_disconnect(client, userdata, rc):
     logger("mqtt disconnected")
 
 
-async def mqtt_poll(client, timeout=ASYNCIO_POLL_MQTT_DELAY):
+async def mqtt_poll(client, hass, timeout=ASYNCIO_POLL_MQTT_DELAY):
     while True:
         client.loop(timeout=timeout)
         if len(mqtt_messages):
             topic, message = mqtt_messages.pop(0)
             logger(f"mqtt queue: enqueued={len(mqtt_messages)} processing={topic}")
-            process_message(client, topic, message)
+            hass.process_message(topic, message)
             del topic, message
         await asyncio.sleep(timeout)
 
 
 # HOME ASSISTANT
 
-HASS_TOPIC_PREFIX = "homeassistant"
+
+import json
+
+HASS_DISCOVERY_TOPIC_PREFIX = "homeassistant"
 OPTS_LIGHT_RGB = dict(color_mode=True, supported_color_modes=["rgb"], brightness=False)
 
 
-def build_entity_name(host_id, name):
-    return f"{MQTT_PREFIX}_{host_id}_{name}"
+class HASSEntity:
+    def __init__(
+        self,
+        client,
+        store,
+        host_id,
+        entity_prefix,
+        name,
+        device_class,
+        discovery_topic_prefix,
+        options=None,
+    ):
+        if options is None:
+            options = dict()
+        self.client = client
+        self.store = store
+        self.host_id = host_id
+        self.entity_prefix = entity_prefix
+        self.name = name
+        self.device_class = device_class
+        self.options = options
+        self.discovery_topic_prefix = discovery_topic_prefix
+        topic_prefix = self._build_entity_topic_prefix()
+        self.topic_config = f"{topic_prefix}/config"
+        self.topic_command = f"{topic_prefix}/set"
+        self.topic_state = f"{topic_prefix}/state"
+        self.state = dict()
 
-
-def advertise_entity(
-    client, name, device_class="switch", options=None, initial_state=None
-):
-    if options is None:
-        options = {}
-    topic_prefix = build_entity_topic_prefix(name, device_class)
-    auto_config = dict(
-        name=name,
-        unique_id=name,
-        device_class=device_class,
-        schema="json",
-        command_topic=f"{topic_prefix}/set",
-        state_topic=f"{topic_prefix}/state",
-    )
-    config = auto_config.copy()
-    config.update(options)
-    logger(f"advertising hass entity: name={name} config={config}")
-    client.publish(f"{topic_prefix}/config", json.dumps(config), retain=True, qos=1)
-    client.subscribe(f"{topic_prefix}/set", 1)
-    if initial_state is not None:
-        update_entity_state(
-            client,
-            device_class,
-            name,
-            initial_state,
+    def configure(self):
+        auto_config = dict(
+            name=self._build_full_name(),
+            unique_id=self._build_full_name(),
+            device_class=self.device_class,
+            schema="json",
+            command_topic=self.topic_command,
+            state_topic=self.topic_state,
         )
-    del topic_prefix, auto_config, config
+        config = auto_config.copy()
+        config.update(self.options)
+        logger(f"hass entity configure: name={self.name} config={config}")
+        self.client.publish(self.topic_config, json.dumps(config), retain=True, qos=1)
+        self.client.subscribe(self.topic_command, 1)
+        del auto_config, config
+
+    def update(self, new_state=None):
+        if new_state is None:
+            new_state = dict()
+        self.state.update(new_state)
+        logger(f"hass entity update: name={self.name} state={self.state}")
+        self.client.publish(
+            self.topic_state, self._get_hass_state(), retain=True, qos=1
+        )
+
+    def _build_full_name(self):
+        return f"{self.entity_prefix}_{self.host_id}_{self.name}"
+
+    def _build_entity_topic_prefix(self):
+        return f"{self.discovery_topic_prefix}/{self.device_class}/{self._build_full_name()}"
+
+    def _get_hass_state(self):
+        return (
+            self.state["state"]
+            if self.device_class == "switch"
+            else json.dumps(self.get_state())
+        )
 
 
-def update_entity_state(client, device_class, name, new_state=None):
-    logger(
-        f"updating hass entity state: device_class={device_class} name={name} state={new_state}"
-    )
-    global store
-    if new_state is None:
-        new_state = {}
-    store["entities"][name] = new_state
-    payload = (
-        store["entities"][name]["state"]
-        if device_class == "switch"
-        else json.dumps(new_state)
-    )
-    topic_prefix = build_entity_topic_prefix(name, device_class)
-    try:
-        client.publish(f"{topic_prefix}/state", payload, retain=True, qos=1)
-    except RuntimeError as error:
-        logger(error)
-    del payload, topic_prefix
+class HASSManager:
+    def __init__(
+        self,
+        client,
+        store,
+        host_id,
+        entity_prefix=MQTT_PREFIX,
+        discovery_topic_prefix=HASS_DISCOVERY_TOPIC_PREFIX,
+    ):
+        self.client = client
+        self.store = store
+        self.host_id = host_id
+        self.entity_prefix = entity_prefix
+        self.discovery_topic_prefix = discovery_topic_prefix
+        self.store["entities"] = dict()
+        logger(
+            f"hass manager: host_id={host_id} discovery_topic_prefix={discovery_topic_prefix}"
+        )
+        pass
+
+    def add_entity(self, name, device_class, options=None, initial_state=None):
+        entity = HASSEntity(
+            self.client,
+            self.store,
+            self.host_id,
+            self.entity_prefix,
+            name,
+            device_class,
+            self.discovery_topic_prefix,
+            options,
+        )
+        entity.configure()
+        entity.update(initial_state)
+        self.store["entities"][name] = entity
+        logger(
+            f"hass entity created: name={name} device_class={device_class} options={options} initial_state={initial_state}"
+        )
+        return entity
+
+    def process_message(self, topic, message):
+        logger(f"hass process message: topic={topic} message={message}")
+        for name, entity in self.store["entities"].items():
+            if topic == entity.topic_command:
+                logger(f"hass topic match entity={entity.name}")
+                entity.update(_message_to_hass(message, entity))
+                break
 
 
-def process_message(client, topic, message):
-    if not topic.startswith(HASS_TOPIC_PREFIX):
-        return
-    bits = topic.split("/")
-    device_class = bits[1]
-    name = bits[2]
-    payload = (
+def _message_to_hass(message, entity):
+    return (
         dict(state="ON" if message == "ON" else "OFF")
-        if device_class == "switch"
+        if entity.device_class == "switch"
         else json.loads(message)
     )
-    if topic == f"{HASS_TOPIC_PREFIX}/{device_class}/{name}/set":
-        update_entity_state(client, device_class, name, payload)
-    del bits, device_class, name, payload
-
-
-def build_entity_topic_prefix(name, device_class):
-    return f"{HASS_TOPIC_PREFIX}/{device_class}/{name}"
 
 
 # GPIO BUTTONS
 
 
-async def poll_buttons(timeout=ASYNCIO_POLL_GPIO_DELAY):
+async def gpio_poll(timeout=ASYNCIO_POLL_GPIO_DELAY):
     with Keys(
         (board.BUTTON_UP, board.BUTTON_DOWN), value_when_pressed=False, pull=True
     ) as keys:

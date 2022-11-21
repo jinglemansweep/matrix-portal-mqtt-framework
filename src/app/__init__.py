@@ -11,10 +11,6 @@ from secrets import secrets
 
 from app.constants import (
     DEBUG,
-    NETWORK_ENABLE,
-    NTP_ENABLE,
-    MQTT_ENABLE,
-    HASS_ENABLE,
     NTP_INTERVAL,
     MATRIX_WIDTH,
     MATRIX_HEIGHT,
@@ -25,8 +21,7 @@ from app.constants import (
 )
 
 from app.storage import store
-from app.display import load_bitmap, BlankGroup
-from app.integration import poll_buttons
+from app.display import BlankGroup
 from app.integration import (
     mqtt_poll,
     on_mqtt_connect,
@@ -34,13 +29,12 @@ from app.integration import (
     on_mqtt_message,
     ntp_update,
     ntp_poll,
+    gpio_poll,
 )
 from app.utils import logger, matrix_rotation
 from theme import setup as setup_theme
 
-logger(
-    f"debug={DEBUG} ntp_enable={NTP_ENABLE} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}"
-)
+logger(f"debug={DEBUG} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}")
 logger(
     f"matrix_width={MATRIX_WIDTH} matrix_height={MATRIX_HEIGHT} matrix_bit_depth={MATRIX_BIT_DEPTH} matrix_color_order={MATRIX_COLOR_ORDER}"
 )
@@ -52,7 +46,6 @@ client = None
 # STATIC RESOURCES
 logger("loading static resources")
 font_bitocra = bitmap_font.load_font("/bitocra7.bdf")
-spritesheet, pixel_shader = load_bitmap("/sprites.bmp", transparent_index=31)
 
 # RGB MATRIX
 logger("configuring rgb matrix")
@@ -74,73 +67,59 @@ gc.collect()
 del accelerometer
 
 # NETWORKING
-if NETWORK_ENABLE:
-    from adafruit_matrixportal.network import Network
 
-    logger("configuring networking")
-    network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
-    network.connect()
-    mac = network._wifi.esp.MAC_address
-    host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
-    gc.collect()
+from adafruit_matrixportal.network import Network
 
-    # NETWORK TIME
-    if NTP_ENABLE:
-        ntp_update(network)
-        gc.collect()
+logger("configuring networking")
+network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
+network.connect()
+mac = network._wifi.esp.MAC_address
+host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
+gc.collect()
 
-    # MQTT
-    if MQTT_ENABLE:
-        import adafruit_esp32spi.adafruit_esp32spi_socket as socket
-        import adafruit_minimqtt.adafruit_minimqtt as MQTT
+# NETWORK TIME
+ntp_update(network)
+gc.collect()
 
-        logger("configuring mqtt client")
-        MQTT.set_socket(socket, network._wifi.esp)
-        client = MQTT.MQTT(
-            broker=secrets.get("mqtt_broker"),
-            username=secrets.get("mqtt_user"),
-            password=secrets.get("mqtt_password"),
-            port=secrets.get("mqtt_port", 1883),
-        )
-        client.on_connect = on_mqtt_connect
-        client.on_disconnect = on_mqtt_disconnect
-        client.on_message = on_mqtt_message
-        client.connect()
-        gc.collect()
+# MQTT
+import adafruit_esp32spi.adafruit_esp32spi_socket as socket
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
 
-        # HOME ASSISTANT
-        if HASS_ENABLE:
-            from app.integration import (
-                advertise_entity,
-                build_entity_name,
-                OPTS_LIGHT_RGB,
-            )
+logger("configuring mqtt client")
+MQTT.set_socket(socket, network._wifi.esp)
+client = MQTT.MQTT(
+    broker=secrets.get("mqtt_broker"),
+    username=secrets.get("mqtt_user"),
+    password=secrets.get("mqtt_password"),
+    port=secrets.get("mqtt_port", 1883),
+)
+client.on_connect = on_mqtt_connect
+client.on_disconnect = on_mqtt_disconnect
+client.on_message = on_mqtt_message
+client.connect()
+gc.collect()
 
-            light_rgb_options = dict(
-                color_mode=True, supported_color_modes=["rgb"], brightness=False
-            )
-            advertise_entity(
-                client,
-                build_entity_name(host_id, "power"),
-                "switch",
-                dict(),
-                dict(state="ON"),
-            )
-            advertise_entity(
-                client,
-                build_entity_name(host_id, "date_rgb"),
-                "light",
-                OPTS_LIGHT_RGB,
-                dict(state="ON", color=0x00FF00, brightness=255, color_mode="rgb"),
-            )
-            gc.collect()
-            del light_rgb_options
+# HOME ASSISTANT
+
+from app.integration import (
+    HASSManager,
+)
+
+hass = HASSManager(client, store, host_id)
+hass.add_entity("power", "switch", {}, {"state": "ON"})
+"""
+light_rgb_options = dict(
+    color_mode=True, supported_color_modes=["rgb"], brightness=False
+)
+"""
+gc.collect()
 
 # THEME
 theme_group, tick_fn = setup_theme(
     width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra
 )
 
+display.show(theme_group)
 
 # APP STARTUP
 def run():
@@ -157,11 +136,9 @@ def run():
 # START EVENT LOOP
 async def main():
     logger("event loop started")
-    asyncio.create_task(poll_buttons())
-    if MQTT_ENABLE:
-        asyncio.create_task(mqtt_poll(client))
-    if NTP_ENABLE:
-        asyncio.create_task(ntp_poll(network))
+    asyncio.create_task(gpio_poll())
+    asyncio.create_task(mqtt_poll(client, hass))
+    asyncio.create_task(ntp_poll(network))
     gc.collect()
     while True:
         asyncio.create_task(tick())
@@ -171,16 +148,14 @@ async def main():
 
 # EVENT LOOP TICK HANDLER
 async def tick():
-    global store, sprite
+    global store
     frame = store["frame"]
     entities = store["entities"]
     display.show(
-        theme_group
-        if entities["mpmqtt_ecf0e625_power"]["state"] == "ON"
-        else BlankGroup()
+        theme_group if entities["power"].state["state"] == "ON" else BlankGroup()
     )
     if frame % 100 == 0:
-        logger(f"tick: frame={frame} store={store}")
+        logger(f"tick: frame={frame} entity_count={len(entities)}")
     tick_fn(frame)
     store["frame"] += 1
 

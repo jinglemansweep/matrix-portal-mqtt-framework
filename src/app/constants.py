@@ -2,10 +2,6 @@ from secrets import secrets
 
 # CONFIG / SECRETS
 DEBUG = secrets.get("debug", False)
-NETWORK_ENABLE = secrets.get("network_enable", True)
-NTP_ENABLE = secrets.get("ntp_enable", True)
-MQTT_ENABLE = secrets.get("mqtt_enable", True)
-HASS_ENABLE = secrets.get("hass_enable", True)
 NTP_INTERVAL = secrets.get("ntp_interval", 60 * 60 * 12)
 MATRIX_WIDTH = secrets.get("matrix_width", 64)
 MATRIX_HEIGHT = secrets.get("matrix_height", 32)
@@ -21,9 +17,3 @@ ASYNCIO_LOOP_DELAY = _ASYNCIO_DELAY
 
 BUTTON_UP = 0
 BUTTON_DOWN = 1
-
-# OVERRIDES
-if not NETWORK_ENABLE:
-    NTP_ENABLE = False
-    MQTT_ENABLE = False
-    HASS_ENABLE = False

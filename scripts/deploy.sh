@@ -12,14 +12,10 @@ echo "Source Path:    ${base_dir}"
 echo "Destination:    ${dest_dir}"
 echo
 
-echo "Installing project libraries and dependencies..."
-echo
-circup install -r "${base_dir}/requirements.txt"
-echo
-
 echo "Syncronising project source to destination device (${dest_dir})..."
 echo
 rsync -av "${base_dir}/src/" "${dest_dir}/"
+cp "${base_dir}/secrets.local.py" "${dest_dir}/secrets.py"
 sync
 echo
 
