@@ -2,13 +2,17 @@ import asyncio
 import gc
 import time
 from adafruit_display_text.label import Label
-from displayio import OnDiskBitmap, TileGrid
+from displayio import OnDiskBitmap, TileGrid, Group
 from cedargrove_palettefader.palettefader import PaletteFader
 from rtc import RTC
 
 PALETTE_GAMMA = 1.0
 PALETTE_BRIGHTNESS = 0.1
 PALETTE_NORMALIZE = True
+
+
+class BlankGroup(Group):
+    pass
 
 
 class BaseSprite:

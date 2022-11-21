@@ -25,7 +25,7 @@ from app.constants import (
 )
 
 from app.storage import store
-from app.display import load_bitmap
+from app.display import load_bitmap, BlankGroup
 from app.integration import poll_buttons
 from app.integration import (
     mqtt_poll,
@@ -137,14 +137,12 @@ if NETWORK_ENABLE:
             del light_rgb_options
 
 # THEME
-group, tick_fn = setup_theme(
+theme_group, tick_fn = setup_theme(
     width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra
 )
 
-# Show group
-display.show(group)
 
-# EVENT LOOP
+# APP STARTUP
 def run():
     logger("start asyncio event loop")
     gc.collect()
@@ -156,6 +154,7 @@ def run():
             asyncio.new_event_loop()
 
 
+# START EVENT LOOP
 async def main():
     logger("event loop started")
     asyncio.create_task(poll_buttons())
@@ -170,11 +169,18 @@ async def main():
         gc.collect()
 
 
+# EVENT LOOP TICK HANDLER
 async def tick():
     global store, sprite
     frame = store["frame"]
+    entities = store["entities"]
+    display.show(
+        theme_group
+        if entities["mpmqtt_ecf0e625_power"]["state"] == "ON"
+        else BlankGroup()
+    )
     if frame % 100 == 0:
-        logger(f"tick: frame={frame}")
+        logger(f"tick: frame={frame} store={store}")
     tick_fn(frame)
     store["frame"] += 1
 
