@@ -23,6 +23,12 @@ SPRITE_GOOMBA_WALK = 16
 
 
 class Sprite(AnimatedTileGrid):
+    # def tick(self):
+    #    super().tick()
+    #    self._set_target_velocities()
+    #    self._apply_velocities()
+    #    self._update_tilegrid()
+
     def set_random_tile(self):
         self.set_tile(
             random.choice(
@@ -62,15 +68,13 @@ class Theme:
                 0,
                 random.randint(0, width - 16),
                 random.randint(0, height - 16),
-                async_delay=0.0001,
             )
             sprite.set_random_tile()
             sprite.set_velocity(random.randint(-1, 1), random.randint(-1, 1))
             self.group.append(sprite)
             self.actors.append(sprite)
-            asyncio.create_task(sprite.start())
         # ADD CLOCK
-        clock = ClockLabel(x=1, y=3, font=font, async_delay=0.5)
+        clock = ClockLabel(x=1, y=3, font=font, async_delay=0.1)
         asyncio.create_task(clock.start())
         self.group.append(clock)
 
@@ -91,3 +95,4 @@ class Theme:
                 actor.set_velocity(y=1)
             elif actor.y > self.height - 16:
                 actor.set_velocity(y=-1)
+            actor.tick()

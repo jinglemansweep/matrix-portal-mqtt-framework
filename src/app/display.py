@@ -10,8 +10,6 @@ PALETTE_GAMMA = 1.0
 PALETTE_BRIGHTNESS = 0.1
 PALETTE_NORMALIZE = True
 
-ASYNC_DELAY_DEFAULT = 0.1
-
 
 class BlankGroup(Group):
     pass
@@ -38,7 +36,7 @@ class AnimatedTileGrid(TileGrid):
         default_tile,
         x,
         y,
-        async_delay=ASYNC_DELAY_DEFAULT,
+        async_delay=None,
     ):
         super().__init__(
             bitmap=bitmap,
