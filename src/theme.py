@@ -2,8 +2,9 @@ import asyncio
 import gc
 import random
 from displayio import Group
+from rtc import RTC
 
-from app.display import AnimatedTileGrid, ClockLabel, load_bitmap
+from app.display import TileGrid, AnimatedTileGrid, ClockLabel, load_bitmap
 from app.utils import logger
 
 
@@ -35,12 +36,22 @@ class MarioSprite(AnimatedTileGrid):
             tile_width=16,
             tile_height=16,
             default_tile=SPRITE_MARIO_WALK_START,
-            tile_count=3,
-            frames_per_tile=3,
             x=x,
             y=y,
             x_range=x_range,
         )
+        self._animate_tile_start = SPRITE_MARIO_WALK_START
+        self._animate_frames_per_tile = 3
+        self._animate_tile_index = 0
+        self._animate_tile_count = 3
+
+    def tick(self, store):
+        frame = store["frame"]
+        if frame % 100 == 0:
+            self.set_random_target()
+        self._animate_tiles(frame)
+        self._set_tile()
+        super().tick(store)
 
     def set_random_target(self):
         if self._animate_x_range is None:
@@ -49,19 +60,111 @@ class MarioSprite(AnimatedTileGrid):
             random.randint(self._animate_x_range[0], self._animate_x_range[1])
         )
 
-    def tick(self, store):
-        frame = store["frame"]
-        if frame % 100 == 0:
-            self.set_random_target()
-        self._set_tile()
-        super().tick(store)
+    def _animate_tiles(self, frame):
+        if frame % self._animate_frames_per_tile == 0:
+            self._animate_tile_index += 1
+            if self._animate_tile_index > self._animate_tile_count - 1:
+                self._animate_tile_index = 0
 
     def _set_tile(self):
         self.flip_x = self._animate_x_dir_last < 0
         if self._animate_x_velocity == 0 and self._animate_y_velocity == 0:
             self[0] = SPRITE_MARIO_STILL
         else:
-            self[0] = self._animate_tile_default + self._animate_tile_idx
+            self[0] = self._animate_tile_start + self._animate_tile_index
+
+
+class GoombaSprite(AnimatedTileGrid):
+    def __init__(
+        self,
+        x,
+        y,
+        x_range=None,
+    ):
+        super().__init__(
+            bitmap=spritesheet,
+            pixel_shader=pixel_shader,
+            width=1,
+            height=1,
+            tile_width=16,
+            tile_height=16,
+            default_tile=SPRITE_GOOMBA_WALK,
+            x=x,
+            y=y,
+            x_range=x_range,
+        )
+
+    def tick(self, store):
+        frame = store["frame"]
+        if frame % 100 == 0:
+            self.set_random_target()
+        self._set_tile(frame)
+        super().tick(store)
+
+    def set_random_target(self):
+        if self._animate_x_range is None:
+            return
+        self.set_target(
+            random.randint(self._animate_x_range[0], self._animate_x_range[1])
+        )
+
+    def _set_tile(self, frame):
+        self.flip_x = frame % 4 < 2
+        if self._animate_x_velocity == 0 and self._animate_y_velocity == 0:
+            self[0] = SPRITE_GOOMBA_STILL
+        else:
+            self[0] = SPRITE_GOOMBA_WALK
+
+
+class BrickSprite(TileGrid):
+    def __init__(self, x, y, width=1):
+        super().__init__(
+            bitmap=spritesheet,
+            pixel_shader=pixel_shader,
+            width=width,
+            height=1,
+            tile_width=16,
+            tile_height=16,
+            default_tile=SPRITE_BRICK,
+            x=x,
+            y=y,
+        )
+
+
+class RockSprite(TileGrid):
+    def __init__(self, x, y, width=1):
+        super().__init__(
+            bitmap=spritesheet,
+            pixel_shader=pixel_shader,
+            width=width,
+            height=1,
+            tile_width=16,
+            tile_height=16,
+            default_tile=SPRITE_ROCK,
+            x=x,
+            y=y,
+        )
+
+
+class PipeSprite(TileGrid):
+    def __init__(self, x, y, width=1):
+        super().__init__(
+            bitmap=spritesheet,
+            pixel_shader=pixel_shader,
+            width=width,
+            height=1,
+            tile_width=16,
+            tile_height=16,
+            default_tile=SPRITE_PIPE,
+            x=x,
+            y=y,
+        )
+        self.y_base = y
+
+    def tick(self, store):
+        now = RTC().datetime
+        second = now.tm_sec
+        self.y = self.y_base + 8 + ((-30 + second) // 6)
 
 
 class Theme:
@@ -70,19 +173,29 @@ class Theme:
         self.width = width
         self.height = height
         self.font = font
+        # SETUP LOCAL VARS
+        y_floor = height - 16 if height > 32 else height - 8
+        y_actor = height - 32 if height > 32 else height - 24
         # SETUP STATE
         self.actors = []
         # SETUP ROOT DISPLAYIO GROUP
         self.group = Group()
-        # Add random sprites
-        self.mario1 = MarioSprite(8, 16, x_range=[-16, width + 16])
-        self.mario2 = MarioSprite(
-            40,
-            height - 24,
-            x_range=[-16, width + 16],
+        # Add Pipe sprite
+        self.pipe = PipeSprite(random.randint(0, width - 16), y_actor)
+        self.group.append(self.pipe)
+        # Add Mario sprite
+        self.mario = MarioSprite(
+            random.randint(0, width), y_actor, x_range=[-16, width + 16]
         )
-        self.group.append(self.mario1)
-        self.group.append(self.mario2)
+        self.group.append(self.mario)
+        # Add Goomba sprite
+        self.goomba = GoombaSprite(
+            random.randint(0, width), y_actor, x_range=[-16, width + 16]
+        )
+        self.group.append(self.goomba)
+        # Add floor sprites
+        self.floor = RockSprite(0, y_floor, width // 16)
+        self.group.append(self.floor)
         # ADD CLOCK
         clock = ClockLabel(x=1, y=3, font=font, async_delay=0.1)
         asyncio.create_task(clock.start())
@@ -93,5 +206,6 @@ class Theme:
         store,
     ):
         # logger(f"theme: frame={frame}")
-        self.mario1.tick(store)
-        self.mario2.tick(store)
+        self.mario.tick(store)
+        self.goomba.tick(store)
+        self.pipe.tick(store)

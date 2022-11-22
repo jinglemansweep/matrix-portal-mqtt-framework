@@ -39,8 +39,6 @@ class AnimatedTileGrid(TileGrid):
         y,
         x_range=None,
         y_range=None,
-        tile_count=1,
-        frames_per_tile=1,
         async_delay=None,
     ):
         super().__init__(
@@ -56,8 +54,6 @@ class AnimatedTileGrid(TileGrid):
         )
         self._animate_x_range = x_range
         self._animate_y_range = y_range
-        self._animate_tile_count = tile_count
-        self._animate_frames_per_tile = frames_per_tile
         self._animate_async_delay = async_delay
         self._animate_x = float(x)
         self._animate_y = float(y)
@@ -68,8 +64,6 @@ class AnimatedTileGrid(TileGrid):
         self._animate_x_dir_last = 1
         self._animate_y_dir_last = 1
         self._animate_is_moving = False
-        self._animate_tile_default = default_tile
-        self._animate_tile_idx = 0
 
     def set_position(self, x=None, y=None):
         if x is not None:
@@ -101,17 +95,9 @@ class AnimatedTileGrid(TileGrid):
                 await asyncio.sleep(self._animate_async_delay)
 
     def tick(self, state):
-        frame = state["frame"]
-        self._animate_tiles(frame)
         self._set_target_velocities()
         self._apply_velocities()
         self._update_tilegrid()
-
-    def _animate_tiles(self, frame):
-        if frame % self._animate_frames_per_tile == 0:
-            self._animate_tile_idx += 1
-            if self._animate_tile_idx > self._animate_tile_count - 1:
-                self._animate_tile_idx = 0
 
     def _set_target_velocities(self):
         if self._animate_x_target is not None:
