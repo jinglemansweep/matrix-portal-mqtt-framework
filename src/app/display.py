@@ -1,8 +1,8 @@
 import asyncio
 import gc
 import time
-from adafruit_display_text.label import Label
-from displayio import OnDiskBitmap, TileGrid, Group
+from adafruit_display_text.label import Label as BaseLabel
+from displayio import OnDiskBitmap, TileGrid as BaseTileGrid, Group
 from cedargrove_palettefader.palettefader import PaletteFader
 from rtc import RTC
 
@@ -10,36 +10,37 @@ PALETTE_GAMMA = 1.0
 PALETTE_BRIGHTNESS = 0.1
 PALETTE_NORMALIZE = True
 
+ASYNC_DELAY_DEFAULT = 0.1
+
 
 class BlankGroup(Group):
     pass
 
 
-class BaseSprite:
+class Label(BaseLabel):
+    pass
+
+
+class TileGrid(BaseTileGrid):
+    def set_tile(self, tile=0):
+        self[0] = tile
+
+
+class AnimatedTileGrid(TileGrid):
     def __init__(
         self,
         bitmap,
         pixel_shader,
-        width=1,
-        height=1,
-        tile_width=None,
-        tile_height=None,
-        default_tile=0,
-        x=0,
-        y=0,
-        async_delay=None,
+        width,
+        height,
+        tile_width,
+        tile_height,
+        default_tile,
+        x,
+        y,
+        async_delay=ASYNC_DELAY_DEFAULT,
     ):
-        self.x = float(x)
-        self.y = float(y)
-        self.async_delay = async_delay
-        self.x_target = None
-        self.y_target = None
-        self.x_velocity = 0
-        self.y_velocity = 0
-        self.x_dir_last = None
-        self.y_dir_last = None
-        self.is_moving = False
-        self.tilegrid = TileGrid(
+        super().__init__(
             bitmap=bitmap,
             pixel_shader=pixel_shader,
             width=width,
@@ -50,38 +51,45 @@ class BaseSprite:
             x=x,
             y=y,
         )
-
-    def get_tilegrid(self):
-        return self.tilegrid
+        self._animate_async_delay = async_delay
+        self._animate_x = float(x)
+        self._animate_y = float(y)
+        self._animate_x_target = None
+        self._animate_y_target = None
+        self._animate_x_velocity = 0
+        self._animate_y_velocity = 0
+        self._animate_x_dir_last = None
+        self._animate_y_dir_last = None
+        self._animate_is_moving = False
 
     def set_position(self, x=None, y=None):
         if x is not None:
-            self.x = x
+            self._animate_x = x
         if y is not None:
-            self.y = y
+            self._animate_y = y
 
     def set_velocity(self, x=0, y=0):
         if x is not None:
-            self.x_velocity = x
+            self._animate_x_velocity = x
         if y is not None:
-            self.y_velocity = y
+            self._animate_y_velocity = y
 
     def set_target(self, x=None, y=None):
         if x is not None:
-            self.x_target = x
+            self._animate_x_target = x
         if y is not None:
-            self.y_target = y
+            self._animate_y_target = y
 
     def stop(self):
         self.set_velocity(0, 0)
-        self.x_target = None
-        self.y_target = None
+        self._animate_x_target = None
+        self._animate_y_target = None
 
     async def start(self):
-        if isinstance(self.async_delay, float):
+        if isinstance(self._animate_async_delay, float):
             while True:
                 self.tick()
-                await asyncio.sleep(self.async_delay)
+                await asyncio.sleep(self._animate_async_delay)
 
     def tick(self):
         self._set_target_velocities()
@@ -89,26 +97,30 @@ class BaseSprite:
         self._update_tilegrid()
 
     def _set_target_velocities(self):
-        if self.x_target is not None:
-            if self.x_target != self.x:
-                self.x_velocity = self.x_dir_last = 1 if self.x_target > self.x else -1
+        if self._animate_x_target is not None:
+            if self._animate_x_target != self.x:
+                self._animate_x_velocity = self._animate_x_dir_last = (
+                    1 if self._animate_x_target > self.x else -1
+                )
             else:
-                self.v_velocity = 0
-                self.x_target = None
-        if self.y_target is not None:
-            if self.y_target != self.y:
-                self.y_velolicty = self.y_dir_last = 1 if self.y_target > self.y else -1
+                self._animate_x_velocity = 0
+                self._animate_x_target = None
+        if self._animate_y_target is not None:
+            if self._animate_y_target != self.y:
+                self._animate_y_velocity = self._animate_y_dir_last = (
+                    1 if self._animate_y_target > self.y else -1
+                )
             else:
-                self.y_velocity = 0
-                self.y_target = None
+                self._animate_y_velocity = 0
+                self._animate_y_target = None
 
     def _apply_velocities(self):
-        self.x += self.x_velocity
-        self.y += self.y_velocity
+        self._animate_x += self._animate_x_velocity
+        self._animate_x += self._animate_y_velocity
 
     def _update_tilegrid(self):
-        self.tilegrid.x = int(self.x)
-        self.tilegrid.y = int(self.y)
+        self.x = int(self._animate_x)
+        self.y = int(self._animate_y)
 
 
 class ClockLabel(Label):
@@ -136,10 +148,6 @@ class ClockLabel(Label):
                 now.tm_hour, now.tm_min, now.tm_sec
             )
             self.text = hhmmss
-
-
-class MyLabel(Label):
-    pass
 
 
 def load_bitmap(

@@ -15,7 +15,7 @@ echo
 echo "Syncronising project source to destination device (${dest_dir})..."
 echo
 rsync -av "${base_dir}/src/" "${dest_dir}/"
-cp "${base_dir}/secrets.local.py" "${dest_dir}/secrets.py"
+# cp "${base_dir}/secrets.local.py" "${dest_dir}/secrets.py"
 sync
 echo
 

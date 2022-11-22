@@ -32,7 +32,7 @@ from app.integration import (
     gpio_poll,
 )
 from app.utils import logger, matrix_rotation
-from theme import setup as setup_theme
+from theme import Theme
 
 logger(f"debug={DEBUG} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}")
 logger(
@@ -115,11 +115,8 @@ light_rgb_options = dict(
 gc.collect()
 
 # THEME
-theme_group, tick_fn = setup_theme(
-    width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra
-)
-
-display.show(theme_group)
+theme = Theme(width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra)
+display.show(theme.group)
 
 # APP STARTUP
 def run():
@@ -152,11 +149,11 @@ async def tick():
     frame = store["frame"]
     entities = store["entities"]
     display.show(
-        theme_group if entities["power"].state["state"] == "ON" else BlankGroup()
+        theme.group if entities["power"].state["state"] == "ON" else BlankGroup()
     )
     if frame % 100 == 0:
         logger(f"tick: frame={frame} entity_count={len(entities)}")
-    tick_fn(frame)
+    theme.tick(frame)
     store["frame"] += 1
 
 
