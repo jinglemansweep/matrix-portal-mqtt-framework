@@ -146,8 +146,8 @@ class RockSprite(TileGrid):
         )
 
 
-class PipeSprite(TileGrid):
-    def __init__(self, x, y, width=1):
+class PipeSprite(AnimatedTileGrid):
+    def __init__(self, x, y, x_range, width=1):
         super().__init__(
             bitmap=spritesheet,
             pixel_shader=pixel_shader,
@@ -159,12 +159,25 @@ class PipeSprite(TileGrid):
             x=x,
             y=y,
         )
+        self.x_range = x_range
         self.y_base = y
+        self.last_second = None
 
     def tick(self, store):
         now = RTC().datetime
+        minute = now.tm_min
         second = now.tm_sec
-        self.y = self.y_base + 8 + ((-30 + second) // 6)
+        if self.last_second is not None or second != self.last_second:
+            self.last_second = second
+            self.set_target(x=None, y=self.y_base + 11 - (second // 5))
+            if second == 0:
+                if self.x_range is not None:
+                    self.set_target(random.randint(self.x_range[0], self.x_range[1]))
+        super().tick(store)
+
+    def set_random_target(self):
+        if self._animate_x_range is None:
+            return
 
 
 class Theme:
@@ -181,7 +194,9 @@ class Theme:
         # SETUP ROOT DISPLAYIO GROUP
         self.group = Group()
         # Add Pipe sprite
-        self.pipe = PipeSprite(random.randint(0, width - 16), y_actor)
+        self.pipe = PipeSprite(
+            random.randint(0, width - 16), y_actor, x_range=[2, width - 18]
+        )
         self.group.append(self.pipe)
         # Add Mario sprite
         self.mario = MarioSprite(

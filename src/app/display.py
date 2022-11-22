@@ -119,7 +119,7 @@ class AnimatedTileGrid(TileGrid):
 
     def _apply_velocities(self):
         self._animate_x += self._animate_x_velocity
-        self._animate_x += self._animate_y_velocity
+        self._animate_y += self._animate_y_velocity
 
     def _update_tilegrid(self):
         self.x = int(self._animate_x)
