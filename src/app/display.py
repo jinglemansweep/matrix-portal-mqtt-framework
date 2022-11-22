@@ -169,7 +169,7 @@ class ClockLabel(Label):
 
 def build_splash_group(font, text="loading..."):
     group = Group()
-    group.append(Label(x=1, y=3, font=font, text=text))
+    group.append(Label(x=1, y=3, font=font, text=text, color=0x220022))
     return group
 
 
