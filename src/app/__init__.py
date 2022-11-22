@@ -26,7 +26,7 @@ from app.constants import (
 )
 
 from app.storage import store
-from app.display import BlankGroup
+from app.display import BlankGroup, build_splash_group
 from app.integration import (
     mqtt_poll,
     on_mqtt_connect,
@@ -72,6 +72,10 @@ display.show(Group())
 gc.collect()
 del accelerometer
 
+# THEME
+theme = Theme(width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra)
+display.show(build_splash_group(font=font_bitocra))
+
 # NETWORKING
 logger("configuring networking")
 network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
@@ -109,10 +113,6 @@ light_rgb_options = dict(
 )
 """
 gc.collect()
-
-# THEME
-theme = Theme(width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra)
-display.show(theme.group)
 
 # APP STARTUP
 def run():

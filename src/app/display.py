@@ -148,6 +148,12 @@ class ClockLabel(Label):
             self.text = hhmmss
 
 
+def build_splash_group(font, text="loading..."):
+    group = Group()
+    group.append(Label(x=1, y=3, font=font, text=text))
+    return group
+
+
 def load_bitmap(
     filename,
     brightness=PALETTE_BRIGHTNESS,
