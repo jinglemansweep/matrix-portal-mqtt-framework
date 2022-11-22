@@ -1,33 +1,45 @@
 import asyncio
 import board
+import gc
 import json
 from keypad import Keys
 from rtc import RTC
+
 
 from app.constants import (
     NTP_INTERVAL,
     ASYNCIO_POLL_MQTT_DELAY,
     ASYNCIO_POLL_GPIO_DELAY,
     MQTT_PREFIX,
+    NTP_TIMEZONE,
 )
 from app.storage import store
-from app.utils import logger, parse_timestamp
+from app.utils import logger, fetch_json, parse_timestamp
 
 mqtt_messages = []
 
 # NETWORK
 
-
-def ntp_update(network):
-    logger("setting date/time from network")
-    timestamp = network.get_local_time()
-    timetuple = parse_timestamp(timestamp)
-    RTC().datetime = timetuple
+DATETIME_API = f"http://worldtimeapi.org/api/timezone/{NTP_TIMEZONE}"
 
 
-async def ntp_poll(network):
+def network_time_update(network):
+    logger("network time: setting")
+    try:
+        resp = fetch_json(DATETIME_API)
+        timestamp = resp["datetime"]
+        logger(f"network time: fetched timestamp={timestamp}")
+        timetuple = parse_timestamp(resp["datetime"])
+        RTC().datetime = timetuple
+        del resp, timestamp, timetuple
+    except Exception as error:
+        logger(f"network time fetch failed: error={error}")
+
+
+async def network_time_poll(network):
     while True:
-        ntp_update(network)
+        network_time_update(network)
+        gc.collect()
         await asyncio.sleep(NTP_INTERVAL)
 
 
@@ -60,9 +72,6 @@ async def mqtt_poll(client, hass, timeout=ASYNCIO_POLL_MQTT_DELAY):
 
 
 # HOME ASSISTANT
-
-
-import json
 
 HASS_DISCOVERY_TOPIC_PREFIX = "homeassistant"
 OPTS_LIGHT_RGB = dict(color_mode=True, supported_color_modes=["rgb"], brightness=False)

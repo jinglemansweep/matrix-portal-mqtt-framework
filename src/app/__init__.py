@@ -2,7 +2,12 @@ import asyncio
 import board
 from busio import I2C
 import gc
+import time
+import adafruit_esp32spi.adafruit_esp32spi_socket as socket
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
+import adafruit_requests as requests
 from adafruit_matrixportal.matrix import Matrix
+from adafruit_matrixportal.network import Network
 from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
 from displayio import Group
@@ -27,9 +32,10 @@ from app.integration import (
     on_mqtt_connect,
     on_mqtt_disconnect,
     on_mqtt_message,
-    ntp_update,
-    ntp_poll,
+    network_time_update,
+    network_time_poll,
     gpio_poll,
+    HASSManager,
 )
 from app.utils import logger, matrix_rotation
 from theme import Theme
@@ -67,24 +73,19 @@ gc.collect()
 del accelerometer
 
 # NETWORKING
-
-from adafruit_matrixportal.network import Network
-
 logger("configuring networking")
 network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
 network.connect()
 mac = network._wifi.esp.MAC_address
 host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
+requests.set_socket(socket, network._wifi.esp)
 gc.collect()
 
 # NETWORK TIME
-ntp_update(network)
+network_time_update(network)
 gc.collect()
 
 # MQTT
-import adafruit_esp32spi.adafruit_esp32spi_socket as socket
-import adafruit_minimqtt.adafruit_minimqtt as MQTT
-
 logger("configuring mqtt client")
 MQTT.set_socket(socket, network._wifi.esp)
 client = MQTT.MQTT(
@@ -100,11 +101,6 @@ client.connect()
 gc.collect()
 
 # HOME ASSISTANT
-
-from app.integration import (
-    HASSManager,
-)
-
 hass = HASSManager(client, store, host_id)
 hass.add_entity("power", "switch", {}, {"state": "ON"})
 """
@@ -125,8 +121,11 @@ def run():
     while True:
         try:
             asyncio.run(main())
+        except Exception as e:
+            print("EXCEPTION", e)
         finally:
-            logger(f"asyncio crash, restarting")
+            logger(f"asyncio restarting")
+            time.sleep(1)
             asyncio.new_event_loop()
 
 
@@ -135,12 +134,11 @@ async def main():
     logger("event loop started")
     asyncio.create_task(gpio_poll())
     asyncio.create_task(mqtt_poll(client, hass))
-    asyncio.create_task(ntp_poll(network))
-    gc.collect()
+    asyncio.create_task(network_time_poll(network))
     while True:
         asyncio.create_task(tick())
-        await asyncio.sleep(ASYNCIO_LOOP_DELAY)
         gc.collect()
+        await asyncio.sleep(ASYNCIO_LOOP_DELAY)
 
 
 # EVENT LOOP TICK HANDLER

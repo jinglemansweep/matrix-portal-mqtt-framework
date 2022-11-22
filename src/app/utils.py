@@ -1,6 +1,8 @@
 import gc
+import json
 import math
 import time
+import adafruit_requests as requests
 
 from app.constants import DEBUG
 
@@ -38,9 +40,26 @@ def matrix_rotation(accelerometer):
     ) * 90
 
 
+def fetch_json(url, retry_count=3):
+    failures = 0
+    response = None
+    logger(f"json fetch: url={url} retry_count={retry_count}")
+    while not response:
+        try:
+            response = requests.get(url)
+            failures = 0
+        except AssertionError as error:
+            logger(f"fetch retrying: error={error}")
+            failures += 1
+            if failures >= retry_count:
+                raise AssertionError("fetch error") from error
+            continue
+    return json.loads(response.text)
+
+
 def parse_timestamp(timestamp, is_dst=-1):
     # 2022-11-04 21:46:57.174 308 5 +0000 UTC
-    bits = timestamp.split(" ")
+    bits = timestamp.split("T")
     year_month_day = bits[0].split("-")
     hour_minute_second = bits[1].split(":")
     return time.struct_time(
