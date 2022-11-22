@@ -16,6 +16,7 @@ from secrets import secrets
 
 from app.constants import (
     DEBUG,
+    BRIGHTNESS,
     NTP_INTERVAL,
     MATRIX_WIDTH,
     MATRIX_HEIGHT,
@@ -40,7 +41,9 @@ from app.integration import (
 from app.utils import logger, matrix_rotation
 from theme import Theme
 
-logger(f"debug={DEBUG} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}")
+logger(
+    f"debug={DEBUG} brightness={BRIGHTNESS} ntp_interval={NTP_INTERVAL} mqtt_prefix={MQTT_PREFIX}"
+)
 logger(
     f"matrix_width={MATRIX_WIDTH} matrix_height={MATRIX_HEIGHT} matrix_bit_depth={MATRIX_BIT_DEPTH} matrix_color_order={MATRIX_COLOR_ORDER}"
 )
@@ -151,7 +154,7 @@ async def tick():
     )
     if frame % 100 == 0:
         logger(f"tick: frame={frame} entity_count={len(entities)}")
-    theme.tick(frame)
+    theme.tick(store)
     store["frame"] += 1
 
 
