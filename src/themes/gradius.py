@@ -1,7 +1,7 @@
 import gc
 import random
 from displayio import Group, Palette
-from vectorio import Circle
+from vectorio import Circle, Rectangle
 from rtc import RTC
 
 from app.display import (
@@ -47,11 +47,15 @@ class GradiusSprite(AnimatedTileGrid):
         super().tick(store)
 
     def set_random_target(self):
-        if self._animate_y_range is None:
-            return
+        x_target = random.randint(self._animate_x_range[0], self._animate_x_range[1])
+        y_target = self.y
+        while abs(y_target - self.y) < 5:
+            y_target = random.randint(
+                self._animate_y_range[0], self._animate_y_range[1]
+            )
         self.set_target(
-            x=random.randint(self._animate_x_range[0], self._animate_x_range[1]),
-            y=random.randint(self._animate_y_range[0], self._animate_y_range[1]),
+            x=x_target,
+            y=y_target,
         )
 
     def _set_tile(self, frame):
@@ -61,17 +65,17 @@ class GradiusSprite(AnimatedTileGrid):
             self[0] = SPRITE_GRADIUS_CENTER
         else:
             diff = target - current
-            if diff <= -2:
+            if diff <= -4:
                 self[0] = SPRITE_GRADIUS_LEFT_HARD
-            elif diff == -1:
+            elif diff >= -3 and diff <= -1:
                 self[0] = SPRITE_GRADIUS_LEFT
-            elif diff == 1:
+            elif diff <= 3 and diff >= 1:
                 self[0] = SPRITE_GRADIUS_RIGHT
-            elif diff >= 2:
+            elif diff >= 4:
                 self[0] = SPRITE_GRADIUS_RIGHT_HARD
 
 
-class StarFieldGroup(Group):
+class BackgroundStarsGroup(Group):
     def __init__(self, x, y, display_width, display_height, count=5):
         super().__init__(x=x, y=y)
         self.display_width = display_width
@@ -79,6 +83,30 @@ class StarFieldGroup(Group):
         self.count = count
         palette = Palette(1)
         palette[0] = 0x101010
+        for i in range(count):
+            star = Rectangle(
+                pixel_shader=palette,
+                width=1,
+                height=1,
+                x=random.randrange(0, self.display_width),
+                y=random.randrange(0, self.display_height),
+            )
+            self.append(star)
+
+    def tick(self, store):
+        self.x -= 1
+        if self.x < 0 - self.display_width:
+            self.x = self.display_width
+
+
+class ForegroundStarsGroup(Group):
+    def __init__(self, x, y, display_width, display_height, count=2):
+        super().__init__(x=x, y=y)
+        self.display_width = display_width
+        self.display_height = display_height
+        self.count = count
+        palette = Palette(1)
+        palette[0] = 0x111166
         for i in range(count):
             star = Circle(
                 pixel_shader=palette,
@@ -89,7 +117,7 @@ class StarFieldGroup(Group):
             self.append(star)
 
     def tick(self, store):
-        self.x -= 1
+        self.x -= 2
         if self.x < 0 - self.display_width:
             self.x = self.display_width
 
@@ -105,10 +133,14 @@ class Theme:
         # SETUP ROOT DISPLAYIO GROUP
         self.group = Group()
         # Add background
-        self.stars1 = StarFieldGroup(0, 0, width, height)
-        self.group.append(self.stars1)
-        self.stars2 = StarFieldGroup(width, 0, width, height)
-        self.group.append(self.stars2)
+        self.bg1 = BackgroundStarsGroup(0, 0, width, height)
+        self.group.append(self.bg1)
+        self.bg2 = BackgroundStarsGroup(width, 0, width, height)
+        self.group.append(self.bg2)
+        self.fg1 = ForegroundStarsGroup(0, 0, width, height)
+        self.group.append(self.fg1)
+        self.fg2 = ForegroundStarsGroup(width, 0, width, height)
+        self.group.append(self.fg2)
         # Add Pipe sprite
         ship_x = (width // 2) - 16
         ship_y = (height // 2) - 8
@@ -130,5 +162,7 @@ class Theme:
         self.clock.tick(store)
         self.calendar.tick(store)
         self.ship.tick(store)
-        self.stars1.tick(store)
-        self.stars2.tick(store)
+        self.bg1.tick(store)
+        self.bg2.tick(store)
+        self.fg1.tick(store)
+        self.fg2.tick(store)
