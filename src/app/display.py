@@ -127,30 +127,52 @@ class AnimatedTileGrid(TileGrid):
 
 
 class ClockLabel(Label):
-    def __init__(self, x, y, font, color=0x111111, async_delay=None):
+    def __init__(self, x, y, font, color=0x111111):
         super().__init__(text="", font=font, color=color)
         self.x = x
         self.y = y
         self.new_second = None
-        self.async_delay = async_delay
+        self.x_orig = x
 
-    async def start(self):
-        if isinstance(self.async_delay, float):
-            while True:
-                self.tick()
-                await asyncio.sleep(self.async_delay)
-
-    def tick(self):
-        # frame = state["frame"]
-        # self.hidden = entities.get("time_rgb").get_state().get("state") == "OFF"
+    def tick(self, store):
+        show_seconds = store["entities"]["time_seconds"].state["state"] == "ON"
         now = RTC().datetime
         ts = time.monotonic()
         if self.new_second is None or ts > self.new_second + 1:
             self.new_second = ts
-            hhmmss = "{:0>2d}:{:0>2d}:{:0>2d}".format(
-                now.tm_hour, now.tm_min, now.tm_sec
-            )
-            self.text = hhmmss
+            if show_seconds:
+                self.x = self.x_orig
+                date_str = "{:0>2d}:{:0>2d}:{:0>2d}".format(
+                    now.tm_hour, now.tm_min, now.tm_sec
+                )
+            else:
+                self.x = self.x_orig + 12
+                date_str = "{:0>2d}:{:0>2d}".format(now.tm_hour, now.tm_min)
+            self.text = date_str
+
+
+class CalendarLabel(Label):
+    def __init__(self, x, y, font, color=0x001100):
+        super().__init__(text="00/00", font=font, color=color)
+        self.x = x
+        self.y = y
+        self.new_hour = None
+        self.new_minute = None
+        self.new_second = None
+
+    def tick(self, store):
+        visible = store["entities"]["date_show"].state["state"] == "ON"
+        self.hidden = not visible
+        now = RTC().datetime
+        ts = time.monotonic()
+        if self.new_second is None or ts > self.new_second + 1:
+            self.new_second = ts
+            if self.new_minute is None or now.tm_sec == 0:
+                self.new_minute = now.tm_min
+                if self.new_hour is None or now.tm_min == 0:
+                    self.new_hour = now.tm_hour
+                    ddmm = "{:0>2d}/{:0>2d}".format(now.tm_mday, now.tm_mon)
+                    self.text = ddmm
 
 
 def build_splash_group(font, text="loading..."):

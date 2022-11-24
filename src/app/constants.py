@@ -4,7 +4,7 @@ from secrets import secrets
 DEBUG = secrets.get("debug", False)
 BRIGHTNESS = secrets.get("brightness", 0.2)
 NTP_TIMEZONE = secrets.get("timezone", "Europe/London")
-NTP_INTERVAL = secrets.get("ntp_interval", 60 * 60 * 6)
+NTP_INTERVAL = secrets.get("ntp_interval", 60 * 60 * 3)
 MATRIX_WIDTH = secrets.get("matrix_width", 64)
 MATRIX_HEIGHT = secrets.get("matrix_height", 32)
 MATRIX_BIT_DEPTH = secrets.get("matrix_bit_depth", 4)

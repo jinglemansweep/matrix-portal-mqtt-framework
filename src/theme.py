@@ -4,7 +4,13 @@ import random
 from displayio import Group
 from rtc import RTC
 
-from app.display import TileGrid, AnimatedTileGrid, ClockLabel, load_bitmap
+from app.display import (
+    TileGrid,
+    AnimatedTileGrid,
+    ClockLabel,
+    CalendarLabel,
+    load_bitmap,
+)
 from app.utils import logger
 
 
@@ -40,6 +46,7 @@ class MarioSprite(AnimatedTileGrid):
             y=y,
             x_range=x_range,
         )
+        self.move_every_frames = random.randint(50, 200)
         self._animate_tile_start = SPRITE_MARIO_WALK_START
         self._animate_frames_per_tile = 3
         self._animate_tile_index = 0
@@ -47,7 +54,7 @@ class MarioSprite(AnimatedTileGrid):
 
     def tick(self, store):
         frame = store["frame"]
-        if frame % 100 == 0:
+        if frame % self.move_every_frames == 0 and random.randint(1, 3) == 1:
             self.set_random_target()
         self._animate_tiles(frame)
         self._set_tile()
@@ -93,10 +100,11 @@ class GoombaSprite(AnimatedTileGrid):
             y=y,
             x_range=x_range,
         )
+        self.move_every_frames = random.randint(50, 200)
 
     def tick(self, store):
         frame = store["frame"]
-        if frame % 100 == 0:
+        if frame % self.move_every_frames == 0 and random.randint(1, 6) == 1:
             self.set_random_target()
         self._set_tile(frame)
         super().tick(store)
@@ -206,18 +214,22 @@ class Theme:
         )
         self.group.append(self.goomba)
         # Add floor sprites
-        self.floor = RockSprite(0, y_floor, width // 16)
+        floor_sprite = random.choice([RockSprite, BrickSprite])
+        self.floor = floor_sprite(0, y_floor, width // 16)
         self.group.append(self.floor)
-        # ADD CLOCK
-        clock = ClockLabel(x=1, y=3, font=font, async_delay=0.1)
-        asyncio.create_task(clock.start())
-        self.group.append(clock)
+        # ADD CLOCK / DATE
+        self.clock = ClockLabel(x=33, y=2, font=font)
+        self.group.append(self.clock)
+        self.calendar = CalendarLabel(x=0, y=2, font=font)
+        self.group.append(self.calendar)
 
     def tick(
         self,
         store,
     ):
         # logger(f"theme: frame={frame}")
+        self.clock.tick(store)
+        self.calendar.tick(store)
         self.mario.tick(store)
         self.goomba.tick(store)
         self.pipe.tick(store)

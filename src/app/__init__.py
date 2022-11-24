@@ -86,6 +86,7 @@ network.connect()
 mac = network._wifi.esp.MAC_address
 host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
 requests.set_socket(socket, network._wifi.esp)
+logger(f"network: host_id={host_id}")
 gc.collect()
 
 # NETWORK TIME
@@ -110,6 +111,9 @@ gc.collect()
 # HOME ASSISTANT
 hass = HASSManager(client, store, host_id)
 hass.add_entity("power", "switch", {}, {"state": "ON"})
+hass.add_entity("time_seconds", "switch", {}, {"state": "OFF"})
+hass.add_entity("date_show", "switch", {}, {"state": "ON"})
+
 """
 light_rgb_options = dict(
     color_mode=True, supported_color_modes=["rgb"], brightness=False
