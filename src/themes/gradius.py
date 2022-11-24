@@ -48,11 +48,7 @@ class GradiusSprite(AnimatedTileGrid):
 
     def set_random_target(self):
         x_target = random.randint(self._animate_x_range[0], self._animate_x_range[1])
-        y_target = self.y
-        while abs(y_target - self.y) < 5:
-            y_target = random.randint(
-                self._animate_y_range[0], self._animate_y_range[1]
-            )
+        y_target = random.randint(self._animate_y_range[0], self._animate_y_range[1])
         self.set_target(
             x=x_target,
             y=y_target,
@@ -100,7 +96,7 @@ class BackgroundStarsGroup(Group):
 
 
 class ForegroundStarsGroup(Group):
-    def __init__(self, x, y, display_width, display_height, count=2):
+    def __init__(self, x, y, display_width, display_height, count=3):
         super().__init__(x=x, y=y)
         self.display_width = display_width
         self.display_height = display_height
