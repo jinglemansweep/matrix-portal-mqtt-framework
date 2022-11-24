@@ -14,7 +14,7 @@ from app.display import (
 from app.utils import logger
 
 
-spritesheet, pixel_shader = load_bitmap("/mario.bmp", transparent_index=15)
+spritesheet, pixel_shader = load_bitmap("/theme.bmp", transparent_index=15)
 gc.collect()
 
 SPRITE_MARIO_STILL = 0
