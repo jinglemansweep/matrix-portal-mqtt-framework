@@ -2,6 +2,14 @@
 
 Simple lightweight MQTT based framework for driving HUB75 LED panels such as AdaFruit's [64x64 HUB75E LED Matrix Panel](https://www.adafruit.com/product/3649), with the [AdaFruit Matrix Portal M4](https://www.adafruit.com/product/4745) controller board.
 
+#### Video
+
+![Mario Theme](./docs/demo-mario.gif) ![Gradius Theme](./docs/demo-gradius.gif)
+
+#### Photos
+
+![Photo](./docs/photo.jpg)
+
 ## Requirements
 
 - [AdaFruit Matrix Portal M4](https://www.adafruit.com/product/4745) RGB LED matrix controller

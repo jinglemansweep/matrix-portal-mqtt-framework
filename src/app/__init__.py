@@ -157,8 +157,14 @@ async def tick():
         theme.group if entities["power"].state["state"] == "ON" else BlankGroup()
     )
     if frame % 100 == 0:
-        logger(f"tick: frame={frame} entity_count={len(entities)}")
+        logger(f"tick: frame={frame} entity_count={len(entities)} mqtt_connected={client.is_connected()}")
     theme.tick(store)
+    try:
+        #client.ping()
+        pass
+    except Exception as error:
+        logger(f"mqtt ping: error={error}")
+        client.connect()
     store["frame"] += 1
 
 

@@ -57,17 +57,21 @@ def on_mqtt_connect(client, userdata, flags, rc):
 
 
 def on_mqtt_disconnect(client, userdata, rc):
-    logger("mqtt disconnected")
+    logger("mqtt disconnected, reconnecting")
+    #client.reconnect()
 
 
 async def mqtt_poll(client, hass, timeout=ASYNCIO_POLL_MQTT_DELAY):
     while True:
-        client.loop(timeout=timeout)
-        if len(mqtt_messages):
-            topic, message = mqtt_messages.pop(0)
-            logger(f"mqtt queue: enqueued={len(mqtt_messages)} processing={topic}")
-            hass.process_message(topic, message)
-            del topic, message
+        try:    
+            client.loop(timeout=timeout)
+            if len(mqtt_messages):
+                topic, message = mqtt_messages.pop(0)
+                logger(f"mqtt queue: enqueued={len(mqtt_messages)} processing={topic}")
+                hass.process_message(topic, message)
+                del topic, message
+        except Exception as error:
+            logger(f"mqtt poll error: error={error}")
         await asyncio.sleep(timeout)
 
 

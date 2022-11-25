@@ -41,7 +41,7 @@ class GradiusSprite(AnimatedTileGrid):
 
     def tick(self, store):
         frame = store["frame"]
-        if frame % 30 == 0 and random.randint(1, 3) == 1:
+        if frame % 30 == 0 and random.randint(1, 10) == 1:
             self.set_random_target()
         self._set_tile(frame)
         super().tick(store)
@@ -123,7 +123,6 @@ class Theme:
         logger(f"theme setup: width={width} height={height} font={font}")
         self.width = width
         self.height = height
-
         # SETUP STATE
         self.actors = []
         # SETUP ROOT DISPLAYIO GROUP
