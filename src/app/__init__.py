@@ -4,7 +4,6 @@ from busio import I2C
 import gc
 import time
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
-import adafruit_minimqtt.adafruit_minimqtt as MQTT
 import adafruit_requests as requests
 from adafruit_matrixportal.matrix import Matrix
 from adafruit_matrixportal.network import Network

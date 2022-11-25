@@ -8,8 +8,9 @@ import adafruit_minimqtt.adafruit_minimqtt as MQTT
 
 from app.constants import (
     NTP_INTERVAL,
-    ASYNCIO_POLL_MQTT_DELAY,
-    ASYNCIO_POLL_GPIO_DELAY,
+    ASYNCIO_MQTT_PING_INTERVAL,
+    ASYNCIO_MQTT_POLL_DELAY,
+    ASYNCIO_GPIO_POLL_DELAY,
     MQTT_PREFIX,
     NTP_TIMEZONE,
 )
@@ -78,11 +79,11 @@ def on_mqtt_connect(client, userdata, flags, rc):
 def on_mqtt_disconnect(client, userdata, rc):
     logger("mqtt disconnected, reconnecting")
 
-async def mqtt_ping(client, hass, store, timeout=3):
+async def mqtt_ping(client, hass, store, timeout=ASYNCIO_MQTT_PING_INTERVAL):
     while True:
         if store["online_mqtt"] == None or store["online_mqtt"] == True:
             try:
-                # logger("mqtt ping")
+                logger("mqtt ping")
                 client.ping()
                 gc.collect()
             except Exception as error:
@@ -97,10 +98,10 @@ async def mqtt_ping(client, hass, store, timeout=3):
                 store["online_mqtt"] = True
             except Exception as error:
                 logger(f"mqtt offline, cannot reconnect: error={error}")
-        await asyncio.sleep(1)
+        await asyncio.sleep(timeout)
 
 
-async def mqtt_poll(client, hass, timeout=ASYNCIO_POLL_MQTT_DELAY):
+async def mqtt_poll(client, hass, timeout=ASYNCIO_MQTT_POLL_DELAY):
     while True:
         try:    
             client.loop(timeout=timeout)
@@ -252,7 +253,7 @@ def _message_to_hass(message, entity):
 # GPIO BUTTONS
 
 
-async def gpio_poll(timeout=ASYNCIO_POLL_GPIO_DELAY):
+async def gpio_poll(timeout=ASYNCIO_GPIO_POLL_DELAY):
     with Keys(
         (board.BUTTON_UP, board.BUTTON_DOWN), value_when_pressed=False, pull=True
     ) as keys:
