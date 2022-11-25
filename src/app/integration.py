@@ -4,7 +4,7 @@ import gc
 import json
 from keypad import Keys
 from rtc import RTC
-
+import adafruit_minimqtt.adafruit_minimqtt as MQTT
 
 from app.constants import (
     NTP_INTERVAL,
@@ -15,6 +15,8 @@ from app.constants import (
 )
 from app.storage import store
 from app.utils import logger, fetch_json, parse_timestamp
+
+from secrets import secrets
 
 mqtt_messages = []
 
@@ -45,6 +47,23 @@ async def network_time_poll(network):
 
 # MQTT
 
+def mqtt_connect(socket, network, store):
+    try:
+        MQTT.set_socket(socket, network._wifi.esp)
+        client = MQTT.MQTT(
+            broker=secrets.get("mqtt_broker"),
+            username=secrets.get("mqtt_user"),
+            password=secrets.get("mqtt_password"),
+            port=secrets.get("mqtt_port", 1883),
+        )
+        client.on_connect = on_mqtt_connect
+        client.on_disconnect = on_mqtt_disconnect
+        client.on_message = on_mqtt_message
+        client.connect()
+        store["online_mqtt"] = True
+        return client
+    except Exception as error:
+        store["online_mqtt"] = False
 
 def on_mqtt_message(client, topic, message):
     logger(f"mqtt received: topic={topic} message={message}")
@@ -58,7 +77,27 @@ def on_mqtt_connect(client, userdata, flags, rc):
 
 def on_mqtt_disconnect(client, userdata, rc):
     logger("mqtt disconnected, reconnecting")
-    #client.reconnect()
+
+async def mqtt_ping(client, hass, store, timeout=3):
+    while True:
+        if store["online_mqtt"] == None or store["online_mqtt"] == True:
+            try:
+                # logger("mqtt ping")
+                client.ping()
+                gc.collect()
+            except Exception as error:
+                logger(f"mqtt ping failed, setting mqtt offline")
+                store["online_mqtt"] = False
+        else:
+            try:
+                client.connect()
+                gc.collect()
+                hass.advertise_entities()
+                gc.collect()
+                store["online_mqtt"] = True
+            except Exception as error:
+                logger(f"mqtt offline, cannot reconnect: error={error}")
+        await asyncio.sleep(1)
 
 
 async def mqtt_poll(client, hass, timeout=ASYNCIO_POLL_MQTT_DELAY):
@@ -71,7 +110,8 @@ async def mqtt_poll(client, hass, timeout=ASYNCIO_POLL_MQTT_DELAY):
                 hass.process_message(topic, message)
                 del topic, message
         except Exception as error:
-            logger(f"mqtt poll error: error={error}")
+            # logger(f"mqtt poll error: error={error}")
+            pass
         await asyncio.sleep(timeout)
 
 
@@ -194,6 +234,11 @@ class HASSManager:
                 logger(f"hass topic match entity={entity.name}")
                 entity.update(_message_to_hass(message, entity))
                 break
+
+    def advertise_entities(self):
+        logger("advertising entities")
+        for name, entity in self.store["entities"].items():
+            entity.configure()
 
 
 def _message_to_hass(message, entity):

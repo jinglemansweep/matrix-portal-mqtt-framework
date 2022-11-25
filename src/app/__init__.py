@@ -12,8 +12,6 @@ from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
 from displayio import Group
 
-from secrets import secrets
-
 from app.constants import (
     DEBUG,
     BRIGHTNESS,
@@ -29,10 +27,9 @@ from app.constants import (
 from app.storage import store
 from app.display import BlankGroup, build_splash_group
 from app.integration import (
+    mqtt_connect,
     mqtt_poll,
-    on_mqtt_connect,
-    on_mqtt_disconnect,
-    on_mqtt_message,
+    mqtt_ping,
     network_time_update,
     network_time_poll,
     gpio_poll,
@@ -77,7 +74,8 @@ del accelerometer
 
 # THEME
 theme = Theme(width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra)
-display.show(build_splash_group(font=font_bitocra))
+splash = build_splash_group(font=font_bitocra)
+display.show(splash)
 
 # NETWORKING
 logger("configuring networking")
@@ -95,17 +93,7 @@ gc.collect()
 
 # MQTT
 logger("configuring mqtt client")
-MQTT.set_socket(socket, network._wifi.esp)
-client = MQTT.MQTT(
-    broker=secrets.get("mqtt_broker"),
-    username=secrets.get("mqtt_user"),
-    password=secrets.get("mqtt_password"),
-    port=secrets.get("mqtt_port", 1883),
-)
-client.on_connect = on_mqtt_connect
-client.on_disconnect = on_mqtt_disconnect
-client.on_message = on_mqtt_message
-client.connect()
+client = mqtt_connect(socket, network, store)
 gc.collect()
 
 # HOME ASSISTANT
@@ -140,6 +128,7 @@ def run():
 async def main():
     logger("event loop started")
     asyncio.create_task(gpio_poll())
+    asyncio.create_task(mqtt_ping(client, hass, store))
     asyncio.create_task(mqtt_poll(client, hass))
     asyncio.create_task(network_time_poll(network))
     while True:
@@ -153,18 +142,17 @@ async def tick():
     global store
     frame = store["frame"]
     entities = store["entities"]
-    display.show(
-        theme.group if entities["power"].state["state"] == "ON" else BlankGroup()
-    )
+    online = store["online_mqtt"]
+    if online:
+        display.show(
+            theme.group if entities["power"].state["state"] == "ON" else BlankGroup()
+        )
+    else:
+        splash[0].text = "reconnecting..."
+        display.show(splash)
     if frame % 100 == 0:
-        logger(f"tick: frame={frame} entity_count={len(entities)} mqtt_connected={client.is_connected()}")
+        logger(f"tick: frame={frame} online={online} entity_count={len(entities)}")
     theme.tick(store)
-    try:
-        #client.ping()
-        pass
-    except Exception as error:
-        logger(f"mqtt ping: error={error}")
-        client.connect()
     store["frame"] += 1
 
 
