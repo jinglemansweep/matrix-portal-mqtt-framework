@@ -106,6 +106,8 @@ hass.add_entity("power", "Power", "switch", {}, dict(state="ON"))
 hass.add_entity("date_rgb", "Date", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0xff), brightness=63))
 hass.add_entity("time_rgb", "Time", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0xff, b=0xff), brightness=63))
 hass.add_entity("time_seconds", "Show Seconds", "switch", {}, dict(state="OFF"))
+hass.add_entity("a_rgb", "Custom RGB A", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0x33,g=0xff, b=0x33), brightness=63))
+
 gc.collect()
 
 # APP STARTUP

@@ -10,7 +10,7 @@ from app.display import (
     CalendarLabel,
     load_bitmap,
 )
-from app.utils import logger
+from app.utils import logger, rgb_dict_to_hex
 
 
 spritesheet, pixel_shader = load_bitmap("/theme.bmp", transparent_index=15)
@@ -47,9 +47,10 @@ class MarioSprite(AnimatedTileGrid):
         )
         self.move_every_frames = random.randint(50, 200)
         self._animate_tile_start = SPRITE_MARIO_WALK_START
-        self._animate_frames_per_tile = 3
+        self._animate_frames_per_tile = 2
         self._animate_tile_index = 0
         self._animate_tile_count = 3
+        self.hidden = True
 
     def tick(self, store):
         frame = store["frame"]
@@ -100,6 +101,7 @@ class GoombaSprite(AnimatedTileGrid):
             x_range=x_range,
         )
         self.move_every_frames = random.randint(50, 200)
+        self.hidden = True
 
     def tick(self, store):
         frame = store["frame"]
@@ -170,6 +172,12 @@ class PipeSprite(AnimatedTileGrid):
         self.last_second = None
 
     def tick(self, store):
+        rgb = rgb_dict_to_hex(store["entities"]["a_rgb"].state["color"], store["entities"]["a_rgb"].state["brightness"])
+        rgb_dark = rgb_dict_to_hex(store["entities"]["a_rgb"].state["color"], int(store["entities"]["a_rgb"].state["brightness"] * 0.5))
+        visible = store["entities"]["a_rgb"].state["state"] == "ON"
+        self.hidden = not visible
+        self.pixel_shader[13] = rgb
+        self.pixel_shader[14] = rgb_dark
         now = RTC().datetime
         minute = now.tm_min
         second = now.tm_sec
