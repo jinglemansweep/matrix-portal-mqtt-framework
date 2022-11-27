@@ -97,15 +97,13 @@ gc.collect()
 
 # HOME ASSISTANT
 hass = HASSManager(client, store, host_id)
-hass.add_entity("power", "switch", {}, {"state": "ON"})
-hass.add_entity("time_seconds", "switch", {}, {"state": "OFF"})
-hass.add_entity("date_show", "switch", {}, {"state": "ON"})
-
-"""
 light_rgb_options = dict(
     color_mode=True, supported_color_modes=["rgb"], brightness=False
 )
-"""
+hass.add_entity("power", "switch", {}, dict(state="ON"))
+hass.add_entity("date_rgb", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0x33)))
+hass.add_entity("time_rgb", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0x11,g=0x11, b=0xff)))
+hass.add_entity("time_seconds", "switch", {}, dict(state="OFF"))
 gc.collect()
 
 # APP STARTUP

@@ -7,6 +7,7 @@ from cedargrove_palettefader.palettefader import PaletteFader
 from rtc import RTC
 
 from app.constants import BRIGHTNESS
+from app.utils import rgb_dict_to_hex
 
 PALETTE_GAMMA = 1.0
 PALETTE_NORMALIZE = True
@@ -134,7 +135,8 @@ class ClockLabel(Label):
         self.x_orig = x
 
     def tick(self, store, epochs):
-        show_seconds = store["entities"]["time_seconds"].state["state"] == "ON"
+        rgb = rgb_dict_to_hex(store["entities"]["time_rgb"].state["color"])
+        show_seconds = store["entities"]["time_rgb"].state["state"] == "ON"
         now = RTC().datetime
         new_second = epochs[2]
         if new_second:
@@ -147,22 +149,25 @@ class ClockLabel(Label):
                 self.x = self.x_orig + 12
                 value = "{:0>2d}:{:0>2d}".format(now.tm_hour, now.tm_min)
             self.text = value
+            self.color = rgb
 
 
 class CalendarLabel(Label):
-    def __init__(self, x, y, font, color=0x110011):
+    def __init__(self, x, y, font, color=0x111111):
         super().__init__(text="00/00", font=font, color=color)
         self.x = x
         self.y = y
 
     def tick(self, store, epochs):
-        visible = store["entities"]["date_show"].state["state"] == "ON"
+        rgb = rgb_dict_to_hex(store["entities"]["date_rgb"].state["color"])
+        visible = store["entities"]["date_rgb"].state["state"] == "ON"
         self.hidden = not visible
         now = RTC().datetime
         new_hour = epochs[0]
         if new_hour:
             value = "{:0>2d}/{:0>2d}".format(now.tm_mday, now.tm_mon)
             self.text = value
+        self.color = rgb
 
 
 def build_splash_group(font, text="loading..."):

@@ -66,7 +66,7 @@ def get_new_epochs(ts_last=None):
     epochs=[None, None, None] # h, m, s
     if ts_last is None or ts > ts_last + 1:
         epochs[2] = True
-        logger(f"epoch: second")
+        # logger(f"epoch: second")
         ts_last = ts 
         if now.tm_sec == 0:
             epochs[1] = True
@@ -97,6 +97,12 @@ def parse_timestamp(timestamp, is_dst=-1):
         )
     )
 
+
+def rgb_dict_to_hex(color, brightness=255):
+    r = int(color["r"] * (brightness / 255))
+    g = int(color["g"] * (brightness / 255))
+    b = int(color["b"] * (brightness / 255))
+    return rgb2hex(r, g, b)
 
 def rgb2hex(r, g, b):
     return (r << 16) + (g << 8) + b

@@ -185,7 +185,7 @@ class HASSEntity:
         return (
             self.state["state"]
             if self.device_class == "switch"
-            else json.dumps(self.get_state())
+            else json.dumps(self.state)
         )
 
 
