@@ -2,6 +2,7 @@ import asyncio
 import board
 import gc
 import json
+import microcontroller
 from keypad import Keys
 from rtc import RTC
 import adafruit_minimqtt.adafruit_minimqtt as MQTT
@@ -13,6 +14,8 @@ from app.constants import (
     ASYNCIO_GPIO_POLL_DELAY,
     MQTT_PREFIX,
     NTP_TIMEZONE,
+    BUTTON_UP,
+    BUTTON_DOWN
 )
 from app.storage import store
 from app.utils import logger, fetch_json, parse_timestamp
@@ -35,6 +38,7 @@ def network_time_update(network):
         timetuple = parse_timestamp(resp["datetime"])
         RTC().datetime = timetuple
         del resp, timestamp, timetuple
+        gc.collect()
     except Exception as error:
         logger(f"network time fetch failed: error={error}")
 
@@ -80,6 +84,7 @@ def on_mqtt_disconnect(client, userdata, rc):
     logger("mqtt disconnected, reconnecting")
 
 async def mqtt_ping(client, hass, store, timeout=ASYNCIO_MQTT_PING_INTERVAL):
+    retry_count = 0
     while True:
         if store["online_mqtt"] == None or store["online_mqtt"] == True:
             try:
@@ -96,8 +101,12 @@ async def mqtt_ping(client, hass, store, timeout=ASYNCIO_MQTT_PING_INTERVAL):
                 hass.advertise_entities()
                 gc.collect()
                 store["online_mqtt"] = True
+                retry_count = 0
             except Exception as error:
-                logger(f"mqtt offline, cannot reconnect: error={error}")
+                logger(f"mqtt offline, cannot reconnect: error={error} retry_count={retry_count}")
+                retry_count += 1
+        if retry_count > 3:
+            microcontroller.reset()
         await asyncio.sleep(timeout)
 
 
@@ -113,6 +122,7 @@ async def mqtt_poll(client, hass, timeout=ASYNCIO_MQTT_POLL_DELAY):
         except Exception as error:
             # logger(f"mqtt poll error: error={error}")
             pass
+        gc.collect()
         await asyncio.sleep(timeout)
 
 
@@ -184,6 +194,7 @@ class HASSEntity:
         self.client.publish(
             self.topic_state, self._get_hass_state(), retain=True, qos=1
         )
+        gc.collect()
 
     def _build_full_name(self):
         return f"{self.entity_prefix}_{self.host_id}_{self.name}"
@@ -274,4 +285,6 @@ async def gpio_poll(timeout=ASYNCIO_GPIO_POLL_DELAY):
                 key_number = key_event.key_number
                 logger(f"button: key={key_number}")
                 store["button"] = key_number
+                if key_number == BUTTON_UP or key_number == BUTTON_DOWN:
+                    store["entities"]["power"].state["state"] = 'OFF' if store["entities"]["power"].state["state"] == 'ON' else 'ON'
             await asyncio.sleep(timeout)

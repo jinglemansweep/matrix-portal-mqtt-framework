@@ -9,7 +9,6 @@ from adafruit_matrixportal.matrix import Matrix
 from adafruit_matrixportal.network import Network
 from adafruit_bitmap_font import bitmap_font
 from adafruit_lis3dh import LIS3DH_I2C
-from displayio import Group
 
 from app.constants import (
     DEBUG,
@@ -24,7 +23,7 @@ from app.constants import (
 )
 
 from app.storage import store
-from app.display import BlankGroup, build_splash_group
+from app.display import build_splash_group
 from app.integration import (
     mqtt_connect,
     mqtt_poll,
@@ -51,6 +50,7 @@ client = None
 # STATIC RESOURCES
 logger("loading static resources")
 font_bitocra = bitmap_font.load_font("/bitocra7.bdf")
+gc.collect()
 
 # RGB MATRIX
 logger("configuring rgb matrix")
@@ -62,23 +62,25 @@ matrix = Matrix(
 )
 accelerometer = LIS3DH_I2C(I2C(board.SCL, board.SDA), address=0x19)
 _ = accelerometer.acceleration  # drain startup readings
+gc.collect()
 
 # DISPLAY / FRAMEBUFFER
 logger("configuring display/framebuffer")
 display = matrix.display
 display.rotation = matrix_rotation(accelerometer)
-display.show(Group())
+splash = build_splash_group(font=font_bitocra)
+display.show(splash)
 gc.collect()
 del accelerometer
 
 # THEME
 theme = Theme(width=MATRIX_WIDTH, height=MATRIX_HEIGHT, font=font_bitocra)
-splash = build_splash_group(font=font_bitocra)
+
 display.show(splash)
 
 # NETWORKING
 logger("configuring networking")
-network = Network(status_neopixel=board.NEOPIXEL, debug=DEBUG)
+network = Network(status_neopixel=None, debug=DEBUG)
 network.connect()
 mac = network._wifi.esp.MAC_address
 host_id = "{:02x}{:02x}{:02x}{:02x}".format(mac[0], mac[1], mac[2], mac[3])
@@ -101,8 +103,8 @@ light_rgb_options = dict(
     color_mode=True, supported_color_modes=["rgb"], brightness=True
 )
 hass.add_entity("power", "Power", "switch", dict(name="Power"), dict(state="ON"))
-hass.add_entity("date_rgb", "Date", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0x33), brightness=127))
-hass.add_entity("time_rgb", "Time", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0x33,g=0x33, b=0xff), brightness=127))
+hass.add_entity("date_rgb", "Date", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0xff), brightness=63))
+hass.add_entity("time_rgb", "Time", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0xff, b=0xff), brightness=63))
 hass.add_entity("time_seconds", "Show Seconds", "switch", {}, dict(state="OFF"))
 gc.collect()
 
@@ -141,9 +143,10 @@ async def tick():
     frame = store["frame"]
     entities = store["entities"]
     online = store["online_mqtt"]
+    theme.group.hidden = not entities["power"].state["state"] == "ON"
     if online:
         display.show(
-            theme.group if entities["power"].state["state"] == "ON" else BlankGroup()
+            theme.group
         )
     else:
         splash[0].text = "reconnecting..."
