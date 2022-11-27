@@ -23,7 +23,7 @@ from app.constants import (
 )
 
 from app.storage import store
-from app.display import build_splash_group
+from app.display import build_splash_group, BlankGroup
 from app.integration import (
     mqtt_connect,
     mqtt_poll,
@@ -143,10 +143,9 @@ async def tick():
     frame = store["frame"]
     entities = store["entities"]
     online = store["online_mqtt"]
-    theme.group.hidden = not entities["power"].state["state"] == "ON"
     if online:
         display.show(
-            theme.group
+            theme.group if entities["power"].state["state"] == "ON" else BlankGroup()
         )
     else:
         splash[0].text = "reconnecting..."
