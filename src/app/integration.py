@@ -166,6 +166,7 @@ class HASSEntity:
     def configure(self):
         auto_config = dict(
             name=self.description,
+            object_id=self._build_full_name(),
             unique_id=self._build_full_name(),
             device_class=self.device_class,
             device=dict(

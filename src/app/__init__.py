@@ -102,7 +102,7 @@ hass = HASSManager(client, store, host_id)
 light_rgb_options = dict(
     color_mode=True, supported_color_modes=["rgb"], brightness=True
 )
-hass.add_entity("power", "Power", "switch", dict(name="Power"), dict(state="ON"))
+hass.add_entity("power", "Power", "switch", {}, dict(state="ON"))
 hass.add_entity("date_rgb", "Date", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0xff), brightness=63))
 hass.add_entity("time_rgb", "Time", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0xff, b=0xff), brightness=63))
 hass.add_entity("time_seconds", "Show Seconds", "switch", {}, dict(state="OFF"))
