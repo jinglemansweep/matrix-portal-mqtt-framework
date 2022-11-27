@@ -34,7 +34,7 @@ from app.integration import (
     gpio_poll,
     HASSManager,
 )
-from app.utils import logger, matrix_rotation
+from app.utils import logger, matrix_rotation, get_new_epochs
 from theme import Theme
 
 logger(
@@ -139,6 +139,7 @@ async def main():
 # EVENT LOOP TICK HANDLER
 async def tick():
     global store
+    store["ts_last"], epochs = get_new_epochs(store["ts_last"])
     frame = store["frame"]
     entities = store["entities"]
     online = store["online_mqtt"]
@@ -151,7 +152,7 @@ async def tick():
         display.show(splash)
     if frame % 100 == 0:
         logger(f"tick: frame={frame} online={online} entity_count={len(entities)}")
-    theme.tick(store)
+    theme.tick(store, epochs)
     store["frame"] += 1
 
 

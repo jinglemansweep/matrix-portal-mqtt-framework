@@ -226,10 +226,11 @@ class Theme:
     def tick(
         self,
         store,
+        epochs
     ):
         # logger(f"theme: frame={frame}")
-        self.clock.tick(store)
-        self.calendar.tick(store)
+        self.clock.tick(store, epochs)
+        self.calendar.tick(store, epochs)
         self.mario.tick(store)
         self.goomba.tick(store)
         self.pipe.tick(store)

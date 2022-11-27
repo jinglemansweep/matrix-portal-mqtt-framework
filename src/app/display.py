@@ -1,6 +1,6 @@
 import asyncio
 import gc
-import time
+
 from adafruit_display_text.label import Label as BaseLabel
 from displayio import OnDiskBitmap, TileGrid as BaseTileGrid, Group
 from cedargrove_palettefader.palettefader import PaletteFader
@@ -131,48 +131,38 @@ class ClockLabel(Label):
         super().__init__(text="", font=font, color=color)
         self.x = x
         self.y = y
-        self.new_second = None
         self.x_orig = x
 
-    def tick(self, store):
+    def tick(self, store, epochs):
         show_seconds = store["entities"]["time_seconds"].state["state"] == "ON"
         now = RTC().datetime
-        ts = time.monotonic()
-        if self.new_second is None or ts > self.new_second + 1:
-            self.new_second = ts
+        new_second = epochs[2]
+        if new_second:
             if show_seconds:
                 self.x = self.x_orig
-                date_str = "{:0>2d}:{:0>2d}:{:0>2d}".format(
+                value = "{:0>2d}:{:0>2d}:{:0>2d}".format(
                     now.tm_hour, now.tm_min, now.tm_sec
                 )
             else:
                 self.x = self.x_orig + 12
-                date_str = "{:0>2d}:{:0>2d}".format(now.tm_hour, now.tm_min)
-            self.text = date_str
+                value = "{:0>2d}:{:0>2d}".format(now.tm_hour, now.tm_min)
+            self.text = value
 
 
 class CalendarLabel(Label):
-    def __init__(self, x, y, font, color=0x001100):
+    def __init__(self, x, y, font, color=0x110011):
         super().__init__(text="00/00", font=font, color=color)
         self.x = x
         self.y = y
-        self.new_hour = None
-        self.new_minute = None
-        self.new_second = None
 
-    def tick(self, store):
+    def tick(self, store, epochs):
         visible = store["entities"]["date_show"].state["state"] == "ON"
         self.hidden = not visible
         now = RTC().datetime
-        ts = time.monotonic()
-        if self.new_second is None or ts > self.new_second + 1:
-            self.new_second = ts
-            if self.new_minute is None or now.tm_sec == 0:
-                self.new_minute = now.tm_min
-                if self.new_hour is None or now.tm_min == 0:
-                    self.new_hour = now.tm_hour
-                    ddmm = "{:0>2d}/{:0>2d}".format(now.tm_mday, now.tm_mon)
-                    self.text = ddmm
+        new_hour = epochs[0]
+        if new_hour:
+            value = "{:0>2d}/{:0>2d}".format(now.tm_mday, now.tm_mon)
+            self.text = value
 
 
 def build_splash_group(font, text="loading..."):

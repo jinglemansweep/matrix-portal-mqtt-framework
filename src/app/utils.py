@@ -3,6 +3,7 @@ import json
 import math
 import time
 import adafruit_requests as requests
+from rtc import RTC
 
 from app.constants import DEBUG
 
@@ -55,6 +56,26 @@ def fetch_json(url, retry_count=3):
                 raise AssertionError("fetch error") from error
             continue
     return json.loads(response.text)
+
+
+def get_new_epochs(ts_last=None):
+    now = RTC().datetime
+    ts = time.monotonic()
+    if ts_last is None:
+        return (ts, [True, True, True])
+    epochs=[None, None, None] # h, m, s
+    if ts_last is None or ts > ts_last + 1:
+        epochs[2] = True
+        logger(f"epoch: second")
+        ts_last = ts 
+        if now.tm_sec == 0:
+            epochs[1] = True
+            logger(f"epoch: minute")
+            if now.tm_min == 0:
+                epochs[0] = True
+                logger(f"epoch: hour")
+    # logger(f"epochs: hour={epochs[0]} min={epochs[1]} sec={epochs[2]}")
+    return (ts_last, epochs)
 
 
 def parse_timestamp(timestamp, is_dst=-1):

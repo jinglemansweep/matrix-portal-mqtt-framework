@@ -2,7 +2,6 @@ import gc
 import random
 from displayio import Group, Palette
 from vectorio import Circle, Rectangle
-from rtc import RTC
 
 from app.display import (
     AnimatedTileGrid,
@@ -152,10 +151,11 @@ class Theme:
     def tick(
         self,
         store,
+        epochs
     ):
-        # logger(f"theme: frame={frame}")
-        self.clock.tick(store)
-        self.calendar.tick(store)
+        # logger(f"theme tick: store={store} epochs={epochs}")
+        self.clock.tick(store, epochs)
+        self.calendar.tick(store, epochs)
         self.ship.tick(store)
         self.bg1.tick(store)
         self.bg2.tick(store)
