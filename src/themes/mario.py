@@ -50,7 +50,6 @@ class MarioSprite(AnimatedTileGrid):
         self._animate_frames_per_tile = 2
         self._animate_tile_index = 0
         self._animate_tile_count = 3
-        self.hidden = True
 
     def tick(self, store):
         frame = store["frame"]
@@ -101,7 +100,6 @@ class GoombaSprite(AnimatedTileGrid):
             x_range=x_range,
         )
         self.move_every_frames = random.randint(50, 200)
-        self.hidden = True
 
     def tick(self, store):
         frame = store["frame"]
