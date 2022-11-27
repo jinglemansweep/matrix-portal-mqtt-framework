@@ -119,6 +119,7 @@ async def mqtt_poll(client, hass, timeout=ASYNCIO_MQTT_POLL_DELAY):
 # HOME ASSISTANT
 
 HASS_DISCOVERY_TOPIC_PREFIX = "homeassistant"
+HASS_DISCOVERY_MANUFACTURER = "jinglemansweep"
 OPTS_LIGHT_RGB = dict(color_mode=True, supported_color_modes=["rgb"], brightness=False)
 
 
@@ -130,6 +131,7 @@ class HASSEntity:
         host_id,
         entity_prefix,
         name,
+        description,
         device_class,
         discovery_topic_prefix,
         options=None,
@@ -141,6 +143,7 @@ class HASSEntity:
         self.host_id = host_id
         self.entity_prefix = entity_prefix
         self.name = name
+        self.description = description
         self.device_class = device_class
         self.options = options
         self.discovery_topic_prefix = discovery_topic_prefix
@@ -152,9 +155,16 @@ class HASSEntity:
 
     def configure(self):
         auto_config = dict(
-            name=self._build_full_name(),
+            name=self.description,
             unique_id=self._build_full_name(),
             device_class=self.device_class,
+            device=dict(
+                identifiers=[self.entity_prefix],
+                name=self.host_id,
+                model=self.entity_prefix,
+                manufacturer=HASS_DISCOVERY_MANUFACTURER,
+                sw_version="1.X"
+            ),
             schema="json",
             command_topic=self.topic_command,
             state_topic=self.topic_state,
@@ -209,13 +219,14 @@ class HASSManager:
         )
         pass
 
-    def add_entity(self, name, device_class, options=None, initial_state=None):
+    def add_entity(self, name, description, device_class, options=None, initial_state=None):
         entity = HASSEntity(
             self.client,
             self.store,
             self.host_id,
             self.entity_prefix,
             name,
+            description,
             device_class,
             self.discovery_topic_prefix,
             options,

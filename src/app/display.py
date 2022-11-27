@@ -135,7 +135,7 @@ class ClockLabel(Label):
         self.x_orig = x
 
     def tick(self, store, epochs):
-        rgb = rgb_dict_to_hex(store["entities"]["time_rgb"].state["color"])
+        rgb = rgb_dict_to_hex(store["entities"]["time_rgb"].state["color"], store["entities"]["time_rgb"].state["brightness"])
         show_seconds = store["entities"]["time_rgb"].state["state"] == "ON"
         now = RTC().datetime
         new_second = epochs[2]
@@ -159,7 +159,7 @@ class CalendarLabel(Label):
         self.y = y
 
     def tick(self, store, epochs):
-        rgb = rgb_dict_to_hex(store["entities"]["date_rgb"].state["color"])
+        rgb = rgb_dict_to_hex(store["entities"]["date_rgb"].state["color"], store["entities"]["date_rgb"].state["brightness"])
         visible = store["entities"]["date_rgb"].state["state"] == "ON"
         self.hidden = not visible
         now = RTC().datetime

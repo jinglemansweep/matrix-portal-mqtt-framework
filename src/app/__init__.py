@@ -98,12 +98,12 @@ gc.collect()
 # HOME ASSISTANT
 hass = HASSManager(client, store, host_id)
 light_rgb_options = dict(
-    color_mode=True, supported_color_modes=["rgb"], brightness=False
+    color_mode=True, supported_color_modes=["rgb"], brightness=True
 )
-hass.add_entity("power", "switch", {}, dict(state="ON"))
-hass.add_entity("date_rgb", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0x33)))
-hass.add_entity("time_rgb", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0x11,g=0x11, b=0xff)))
-hass.add_entity("time_seconds", "switch", {}, dict(state="OFF"))
+hass.add_entity("power", "Power", "switch", dict(name="Power"), dict(state="ON"))
+hass.add_entity("date_rgb", "Date", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0xff,g=0x00, b=0x33), brightness=127))
+hass.add_entity("time_rgb", "Time", "light", light_rgb_options, dict(state="ON", color_mode="RGB", color=dict(r=0x33,g=0x33, b=0xff), brightness=127))
+hass.add_entity("time_seconds", "Show Seconds", "switch", {}, dict(state="OFF"))
 gc.collect()
 
 # APP STARTUP
@@ -130,7 +130,7 @@ async def main():
     asyncio.create_task(network_time_poll(network))
     while True:
         asyncio.create_task(tick())
-        gc.collect()
+                
         await asyncio.sleep(ASYNCIO_LOOP_DELAY)
 
 
@@ -152,6 +152,7 @@ async def tick():
         logger(f"tick: frame={frame} online={online} entity_count={len(entities)}")
     theme.tick(store, epochs)
     store["frame"] += 1
+    
 
 
 # STARTUP
