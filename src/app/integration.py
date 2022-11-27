@@ -159,7 +159,7 @@ class HASSEntity:
             unique_id=self._build_full_name(),
             device_class=self.device_class,
             device=dict(
-                identifiers=[self.entity_prefix],
+                identifiers=[self.host_id],
                 name=self.host_id,
                 model=self.entity_prefix,
                 manufacturer=HASS_DISCOVERY_MANUFACTURER,

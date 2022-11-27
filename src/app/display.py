@@ -136,7 +136,7 @@ class ClockLabel(Label):
 
     def tick(self, store, epochs):
         rgb = rgb_dict_to_hex(store["entities"]["time_rgb"].state["color"], store["entities"]["time_rgb"].state["brightness"])
-        show_seconds = store["entities"]["time_rgb"].state["state"] == "ON"
+        show_seconds = store["entities"]["time_seconds"].state["state"] == "ON"
         now = RTC().datetime
         new_second = epochs[2]
         if new_second:
