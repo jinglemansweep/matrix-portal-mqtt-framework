@@ -1,7 +1,7 @@
 import gc
 import supervisor
 
-supervisor.disable_autoreload()
+supervisor.runtime.autoreload = False
 gc.collect()
 
 print("BOOT [mem:{}]".format(gc.mem_free()))
