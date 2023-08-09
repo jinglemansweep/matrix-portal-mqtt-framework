@@ -1,3 +1,7 @@
+fork of @jinglemansweep's Matrix Portal M4 MQTT Framework  
+https://github.com/jinglemansweep/matrix-portal-mqtt-framework
+
+
 # Matrix Portal M4 MQTT Framework
 
 Simple lightweight MQTT based framework for driving HUB75 LED panels such as AdaFruit's [64x32 HUB75 LED Matrix Panel](https://www.adafruit.com/product/2278) or [64x64 HUB75E LED Matrix Panel](https://www.adafruit.com/product/3649), with the [AdaFruit Matrix Portal M4](https://www.adafruit.com/product/4745) controller board.
